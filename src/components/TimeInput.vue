@@ -1,0 +1,101 @@
+<script setup>
+import { defineComponent, ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useStore } from '../stores/counter'
+
+const router = useRouter()
+const store = useStore()
+const minutes = ref(25)
+const error = ref<string | null>(null)
+
+const startCountdown = () => {
+  if (minutes.value <= 0) {
+    error.value = 'Por favor, insira um tempo maior que 0'
+    return
+  }
+  error.value = null
+  const totalSeconds = minutes.value * 60
+  router.push('/timer')
+  window.electronAPI.startCountdown(totalSeconds)
+}
+</script>
+
+<template>
+  <div class="container">
+    <h1>Cronômetro</h1>
+    
+    <div class="card">
+      <label>
+        <span>Tempo (minutos):</span>
+        <input 
+          type="number" 
+          v-model="minutes" 
+          min="1" 
+          class="input"
+          placeholder="25"
+        />
+      </label>
+      
+      <p v-if="error" class="error">{{ error }}</p>
+      
+      <button @click="startCountdown" class="btn-start">
+        Iniciar
+      </button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: #f0f2f5;
+}
+
+.card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.input {
+  width: 100%;
+  padding: 0.8rem;
+  margin: 0.5rem 0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.btn-start {
+  width: 100%;
+  padding: 0.8rem;
+  background: #42b983;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background 0.2s;
+}
+
+.btn-start:hover {
+  background: #36a46f;
+}
+
+.error {
+  color: #e74c3c;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+}
+</style>
