@@ -1,43 +1,39 @@
 <script setup lang="ts">
-import { defineComponent, ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useStore } from '../stores/counter'
+import { useCounterStore } from '../stores/counter'
 
 const router = useRouter()
 const route = useRoute()
-const store = useStore()
+const store = useCounterStore()
 
-let timerInterval: any = null
-const seconds = computed(() => store.getRemainingSeconds)
-const formattedTime = computed(() => {
-  const mins = Math.floor(seconds.value / 60)
-  const secs = seconds.value % 60
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
-})
+let cleanupTick: (() => void) | null = null
+let cleanupFinished: (() => void) | null = null
 
+const seconds = computed(() => store.remainingSeconds)
+const formattedTime = computed(() => store.formattedTime)
 const isRunning = computed(() => store.isRunning)
 
 onMounted(() => {
-  store.setTotalSeconds(parseInt(route.params.seconds as string) || 0)
-  store.start()
-  
-  timerInterval = setInterval(() => {
-    store.decrement()
-    if (store.getRemainingSeconds <= 0) {
-      store.stop()
-      clearInterval(timerInterval!)
-      timerInterval = null
-      // Notify main process that countdown finished
-      window.electronAPI.startCountdown(store.getRemainingSeconds)
-    }
-  }, 1000)
+  const paramsSeconds = route.params.seconds
+    ? parseInt(route.params.seconds as string)
+    : store.totalSeconds
+  if (paramsSeconds > 0) {
+    store.setTime(paramsSeconds)
+  }
+
+  cleanupTick = window.electronAPI.onTick((remainingSeconds: number) => {
+    store.remainingSeconds = remainingSeconds
+  })
+
+  cleanupFinished = window.electronAPI.onFinished(() => {
+    store.finish()
+  })
 })
 
 onBeforeUnmount(() => {
-  if (timerInterval) {
-    clearInterval(timerInterval)
-  }
-  store.stop()
+  if (cleanupTick) cleanupTick()
+  if (cleanupFinished) cleanupFinished()
 })
 </script>
 
@@ -45,22 +41,14 @@ onBeforeUnmount(() => {
   <div class="container">
     <div class="card">
       <h2>Cronômetro</h2>
-      
+
       <p class="time-label">{{ formattedTime }}</p>
-      
-      <button 
-        @click="isRunning ? store.stop() : store.start()" 
-        class="btn-toggle"
-        :class="{ 'running': isRunning }"
-      >
-        {{ isRunning ? 'Pausar' : 'Continuar' }}
+
+      <button class="btn-stop" @click="window.electronAPI.cancelTimer()">
+        Parar
       </button>
-      
-      <button 
-        @click="router.push('/')" 
-        class="btn-restart"
-        style="margin-top: 1rem"
-      >
+
+      <button @click="router.push('/')" class="btn-restart" style="margin-top: 1rem">
         Reiniciar
       </button>
     </div>
@@ -82,7 +70,7 @@ onBeforeUnmount(() => {
   background: white;
   padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 360px;
   text-align: center;
@@ -96,7 +84,7 @@ onBeforeUnmount(() => {
   color: #2c3e50;
 }
 
-.btn-toggle {
+.btn-stop {
   width: 100%;
   padding: 0.8rem;
   border: none;
@@ -105,17 +93,13 @@ onBeforeUnmount(() => {
   font-weight: 600;
   cursor: pointer;
   margin: 1rem 0;
+  background: #e74c3c;
+  color: white;
   transition: background 0.2s;
 }
 
-.btn-toggle.running {
-  background: #e74c3c;
-  color: white;
-}
-
-.btn-toggle:not(.running) {
-  background: #3498db;
-  color: white;
+.btn-stop:hover {
+  background: #c0392b;
 }
 
 .btn-restart {

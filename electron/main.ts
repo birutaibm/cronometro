@@ -1,7 +1,11 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import * as path from 'path'
+import path from 'path'
 
-let mainWindow: BrowserWindow | null
+app.disableHardwareAcceleration()
+
+let mainWindow: BrowserWindow | null = null
+let timerInterval: ReturnType<typeof setInterval> | null = null
+let remainingSeconds = 0
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -10,7 +14,7 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      enableRemoteModule: false,
+      webgl: false,
     },
   })
 
@@ -19,6 +23,13 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+
+  mainWindow.on('close', (event) => {
+    if (process.platform !== 'darwin') {
+      event.preventDefault()
+      if (mainWindow) mainWindow.hide()
+    }
+  })
 
   mainWindow.on('closed', () => {
     mainWindow = null
@@ -31,6 +42,8 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
+    } else if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show()
     }
   })
 })
@@ -41,10 +54,47 @@ app.on('window-all-closed', () => {
   }
 })
 
-ipcMain.handle('start-countdown', (_, seconds: number) => {
-  return { status: 'started', seconds }
+app.on('before-quit', () => {
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
 })
 
-ipcMain.on('set-time', (event, minutes: number) => {
-  event.reply('countdown-started', minutes)
+function startTimer(seconds: number) {
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
+  remainingSeconds = seconds
+  timerInterval = setInterval(() => {
+    remainingSeconds--
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('timer:tick', remainingSeconds)
+    }
+    if (remainingSeconds <= 0) {
+      if (timerInterval) {
+        clearInterval(timerInterval)
+        timerInterval = null
+      }
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('timer:finished')
+      }
+    }
+  }, 1000)
+}
+
+function cancelTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
+}
+
+ipcMain.handle('timer:start', (_, seconds: number) => {
+  startTimer(seconds)
+})
+
+ipcMain.handle('timer:cancel', () => {
+  cancelTimer()
 })

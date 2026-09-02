@@ -1,43 +1,44 @@
-<script setup>
-import { defineComponent, ref, onMounted, watch } from 'vue'
+<script setup lang="ts">
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useStore } from '../stores/counter'
+import { useCounterStore } from '../stores/counter'
 
 const router = useRouter()
-const store = useStore()
+const store = useCounterStore()
 const minutes = ref(25)
 const error = ref<string | null>(null)
 
-const startCountdown = () => {
+function startCountdown() {
   if (minutes.value <= 0) {
     error.value = 'Por favor, insira um tempo maior que 0'
     return
   }
   error.value = null
   const totalSeconds = minutes.value * 60
+  store.setTime(totalSeconds)
   router.push('/timer')
-  window.electronAPI.startCountdown(totalSeconds)
+  window.electronAPI.startTimer(totalSeconds)
 }
 </script>
 
 <template>
   <div class="container">
     <h1>Cronômetro</h1>
-    
+
     <div class="card">
       <label>
         <span>Tempo (minutos):</span>
-        <input 
-          type="number" 
-          v-model="minutes" 
-          min="1" 
+        <input
+          type="number"
+          v-model="minutes"
+          min="1"
           class="input"
           placeholder="25"
         />
       </label>
-      
+
       <p v-if="error" class="error">{{ error }}</p>
-      
+
       <button @click="startCountdown" class="btn-start">
         Iniciar
       </button>
@@ -60,7 +61,7 @@ const startCountdown = () => {
   background: white;
   padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 360px;
   text-align: center;

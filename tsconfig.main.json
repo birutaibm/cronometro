@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "outDir": "dist-electron",
+    "rootDir": "electron",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": ["electron/**/*"],
+  "exclude": ["node_modules", "dist", "dist-electron"]
+}

@@ -9,41 +9,37 @@ export const useCounterStore = defineStore('counter', () => {
   const formattedTime = computed(() => {
     const mins = Math.floor(remainingSeconds.value / 60)
     const secs = remainingSeconds.value % 60
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   })
 
-  const setTotalSeconds = (seconds: number) => {
+  function setTime(seconds: number) {
     totalSeconds.value = seconds
     remainingSeconds.value = seconds
     isRunning.value = false
   }
 
-  const start = () => {
-    isRunning.value = true
+  function setRunning(value: boolean) {
+    isRunning.value = value
   }
 
-  const stop = () => {
-    isRunning.value = false
+  function reset() {
     remainingSeconds.value = totalSeconds.value
+    isRunning.value = false
   }
 
-  const decrement = () => {
-    if (remainingSeconds.value > 0) {
-      remainingSeconds.value--
-    }
+  function finish() {
+    remainingSeconds.value = 0
+    isRunning.value = false
   }
-
-  const getRemainingSeconds = computed(() => remainingSeconds.value)
 
   return {
     remainingSeconds,
     isRunning,
     totalSeconds,
     formattedTime,
-    setTotalSeconds,
-    start,
-    stop,
-    decrement,
-    getRemainingSeconds,
+    setTime,
+    setRunning,
+    reset,
+    finish,
   }
 })

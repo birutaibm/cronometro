@@ -1,13 +1,15 @@
 {
   "name": "cronometro",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron:dev": "node scripts/start-electron.cjs",
-    "electron:build": "vite build && electron-builder"
+    "build:main": "npx tsc --project tsconfig.main.json",
+    "electron:dev": "npm run build:main && node scripts/start-electron.cjs",
+    "electron:build": "npm run build:main && npm run build && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [],
   "author": "",
@@ -23,7 +25,28 @@
     "@vitejs/plugin-vue": "^5.2.4",
     "@vitejs/plugin-vue-jsx": "^4.2.0",
     "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
     "typescript": "^7.0.2",
     "vite": "^6.4.3"
+  },
+  "build": {
+    "appId": "com.cronometro.app",
+    "productName": "Cronometro",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

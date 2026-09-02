@@ -4,7 +4,7 @@ import TimerPage from '../components/TimerPage.vue'
 
 const routes = [
   { path: '/', component: TimeInput, name: 'time-input' },
-  { path: '/timer', component: TimerPage, name: 'timer' },
+  { path: '/timer/:seconds?', component: TimerPage, name: 'timer' },
 ]
 
 export const router = createRouter({
