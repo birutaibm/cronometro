@@ -44,11 +44,11 @@ onBeforeUnmount(() => {
 
       <p class="time-label">{{ formattedTime }}</p>
 
-      <button class="btn-stop" @click="window.electronAPI.cancelTimer()">
-        Parar
+      <button @click="router.push('/')" class="btn-configure">
+        Configurar
       </button>
 
-      <button @click="router.push('/')" class="btn-restart" style="margin-top: 1rem">
+      <button @click="router.push('/')" class="btn-restart" style="margin-top: 0.5rem">
         Reiniciar
       </button>
     </div>
@@ -78,28 +78,28 @@ onBeforeUnmount(() => {
 }
 
 .time-label {
-  font-size: 3.5rem;
+  font-size: 2.5rem;
   font-weight: 300;
   margin: 1rem 0;
   color: #2c3e50;
 }
 
-.btn-stop {
+.btn-configure {
   width: 100%;
   padding: 0.8rem;
+  background: #3498db;
+  color: white;
   border: none;
   border-radius: 6px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   margin: 1rem 0;
-  background: #e74c3c;
-  color: white;
   transition: background 0.2s;
 }
 
-.btn-stop:hover {
-  background: #c0392b;
+.btn-configure:hover {
+  background: #2980b9;
 }
 
 .btn-restart {

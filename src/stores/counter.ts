@@ -7,9 +7,10 @@ export const useCounterStore = defineStore('counter', () => {
   const totalSeconds = ref(0)
 
   const formattedTime = computed(() => {
-    const mins = Math.floor(remainingSeconds.value / 60)
+    const hrs = Math.floor(remainingSeconds.value / 3600)
+    const mins = Math.floor((remainingSeconds.value % 3600) / 60)
     const secs = remainingSeconds.value % 60
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   })
 
   function setTime(seconds: number) {

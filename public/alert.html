@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cronômetro Finalizado</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #e74c3c;
+    }
+    p {
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      color: #ccc;
+    }
+    .buttons {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      padding: 0.7rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    .btn-ok { background: #3498db; color: white; }
+    .btn-reabrir { background: #2ecc71; color: white; }
+    .btn-finalizar { background: #e74c3c; color: white; }
+  </style>
+</head>
+<body>
+  <h2>Cronômetro Finalizado!</h2>
+  <p>O tempo acabou.</p>
+  <div class="buttons" id="buttons"></div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const actions = params.get('actions') ? params.get('actions').split(',') : ['ok'];
+    const container = document.getElementById('buttons');
+    actions.forEach(action => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-' + action;
+      btn.textContent = action === 'ok' ? 'OK' : action === 'reabrir' ? 'Reabrir' : 'Finalizar';
+      btn.addEventListener('click', () => {
+        window.electronAPI.sendAction(action);
+      });
+      container.appendChild(btn);
+    });
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep() {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    }
+    beep();
+    setTimeout(beep, 300);
+  </script>
+</body>
+</html>

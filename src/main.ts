@@ -13,3 +13,5 @@ app.component('RouterLink', RouterLink)
 app.component('RouterView', RouterView)
 
 app.mount('#app')
+declare global { interface Window { __router?: typeof router } }
+window.__router = router

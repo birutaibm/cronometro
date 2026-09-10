@@ -5,16 +5,18 @@ import { useCounterStore } from '../stores/counter'
 
 const router = useRouter()
 const store = useCounterStore()
+const hours = ref(0)
 const minutes = ref(25)
+const seconds = ref(0)
 const error = ref<string | null>(null)
 
 function startCountdown() {
-  if (minutes.value <= 0) {
+  const totalSeconds = hours.value * 3600 + minutes.value * 60 + seconds.value
+  if (totalSeconds <= 0) {
     error.value = 'Por favor, insira um tempo maior que 0'
     return
   }
   error.value = null
-  const totalSeconds = minutes.value * 60
   store.setTime(totalSeconds)
   router.push('/timer')
   window.electronAPI.startTimer(totalSeconds)
@@ -26,14 +28,34 @@ function startCountdown() {
     <h1>Cronômetro</h1>
 
     <div class="card">
-      <label>
-        <span>Tempo (minutos):</span>
+      <label style="display: block; margin-bottom: 0.8rem;">
+        <span>Horas:</span>
+        <input
+          type="number"
+          v-model="hours"
+          min="0"
+          class="input"
+          placeholder="0"
+        />
+      </label>
+      <label style="display: block; margin-bottom: 0.8rem;">
+        <span>Minutos:</span>
         <input
           type="number"
           v-model="minutes"
-          min="1"
+          min="0"
           class="input"
           placeholder="25"
+        />
+      </label>
+      <label style="display: block; margin-bottom: 0.8rem;">
+        <span>Segundos:</span>
+        <input
+          type="number"
+          v-model="seconds"
+          min="0"
+          class="input"
+          placeholder="0"
         />
       </label>
 

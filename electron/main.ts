@@ -4,8 +4,10 @@ import path from 'path'
 app.disableHardwareAcceleration()
 
 let mainWindow: BrowserWindow | null = null
+let alertWindow: BrowserWindow | null = null
 let timerInterval: ReturnType<typeof setInterval> | null = null
 let remainingSeconds = 0
+let totalTime = 0
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -18,21 +20,99 @@ function createWindow() {
     },
   })
 
+  const url = process.env.VITE_DEV_SERVER_URL || path.join(__dirname, '../dist/index.html')
   if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
+    mainWindow.loadURL(url)
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    mainWindow.loadFile(url)
   }
 
   mainWindow.on('close', (event) => {
     if (process.platform !== 'darwin') {
-      event.preventDefault()
-      if (mainWindow) mainWindow.hide()
+      if (timerInterval) {
+        event.preventDefault()
+        if (mainWindow) mainWindow.hide()
+      }
     }
   })
 
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+}
+
+function createAlertWindow(actions: string[]) {
+  alertWindow = new BrowserWindow({
+    width: 360,
+    height: 220,
+    frame: false,
+    alwaysOnTop: true,
+    resizable: false,
+    closable: false,
+    skipTaskbar: false,
+    backgroundColor: '#1a1a2e',
+    webPreferences: {
+      preload: path.join(__dirname, 'alert-preload.js'),
+      contextIsolation: true,
+      webgl: false,
+    },
+  })
+
+  const alertUrl = process.env.VITE_DEV_SERVER_URL
+    ? `${process.env.VITE_DEV_SERVER_URL}/alert.html?actions=${actions.join(',')}`
+    : `file://${path.join(__dirname, '../dist/alert.html')}?actions=${actions.join(',')}`
+  alertWindow.loadURL(alertUrl)
+
+  alertWindow.on('closed', () => {
+    alertWindow = null
+  })
+}
+
+function startTimer(seconds: number) {
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
+  totalTime = seconds
+  remainingSeconds = seconds
+  timerInterval = setInterval(() => {
+    remainingSeconds--
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('timer:tick', remainingSeconds)
+    }
+    if (remainingSeconds <= 0) {
+      if (timerInterval) {
+        clearInterval(timerInterval)
+        timerInterval = null
+      }
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('timer:finished')
+      }
+      const hasMainWindow = mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible()
+      createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'])
+    }
+  }, 1000)
+}
+
+function cancelTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
+}
+
+function recreateMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show()
+    return
+  }
+  createWindow()
+  const secondsParam = totalTime
+  const mw = mainWindow!
+  mw.webContents.on('did-finish-load', () => {
+    mw.webContents.executeJavaScript(
+      `window.__router?.push('/timer/${secondsParam}')`
+    )
   })
 }
 
@@ -61,40 +141,31 @@ app.on('before-quit', () => {
   }
 })
 
-function startTimer(seconds: number) {
-  if (timerInterval) {
-    clearInterval(timerInterval)
-    timerInterval = null
-  }
-  remainingSeconds = seconds
-  timerInterval = setInterval(() => {
-    remainingSeconds--
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('timer:tick', remainingSeconds)
-    }
-    if (remainingSeconds <= 0) {
-      if (timerInterval) {
-        clearInterval(timerInterval)
-        timerInterval = null
-      }
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('timer:finished')
-      }
-    }
-  }, 1000)
-}
-
-function cancelTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval)
-    timerInterval = null
-  }
-}
-
 ipcMain.handle('timer:start', (_, seconds: number) => {
   startTimer(seconds)
 })
 
 ipcMain.handle('timer:cancel', () => {
   cancelTimer()
+})
+
+ipcMain.on('alert:action', (event, action: string) => {
+  if (action === 'ok') {
+    if (alertWindow) {
+      alertWindow.close()
+      alertWindow = null
+    }
+  } else if (action === 'reabrir') {
+    if (alertWindow) {
+      alertWindow.close()
+      alertWindow = null
+    }
+    recreateMainWindow()
+  } else if (action === 'finalizar') {
+    if (alertWindow) {
+      alertWindow.close()
+      alertWindow = null
+    }
+    app.quit()
+  }
 })
