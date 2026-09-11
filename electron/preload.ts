@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('electronAPI', {
   startTimer: (seconds: number) => ipcRenderer.invoke('timer:start', seconds),
   cancelTimer: () => ipcRenderer.invoke('timer:cancel'),
+  hideMainWindow: () => ipcRenderer.send('main:hide'),
   onTick: (callback: (remainingSeconds: number) => void) => {
     const handler = (_: unknown, remainingSeconds: number) => callback(remainingSeconds)
     ipcRenderer.on('timer:tick', handler)

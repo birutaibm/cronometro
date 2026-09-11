@@ -169,3 +169,9 @@ ipcMain.on('alert:action', (event, action: string) => {
     app.quit()
   }
 })
+
+ipcMain.on('main:hide', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide()
+  }
+})
