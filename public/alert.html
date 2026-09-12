@@ -16,12 +16,13 @@
       min-height: 100vh;
       padding: 1.5rem;
     }
-    h2 {
+    
+    #alert-title {
       font-size: 1.5rem;
       margin-bottom: 1rem;
       color: #e74c3c;
     }
-    p {
+    #alert-msg {
       font-size: 1rem;
       margin-bottom: 1.5rem;
       color: #ccc;
@@ -48,12 +49,13 @@
   </style>
 </head>
 <body>
-  <h2>Cronômetro Finalizado!</h2>
-  <p>O tempo acabou.</p>
+  <h2 id="alert-title">Cronômetro Finalizado!</h2>
+  <p id="alert-msg">O tempo acabou.</p>
   <div class="buttons" id="buttons"></div>
   <script>
     const params = new URLSearchParams(window.location.search);
     const actions = params.get('actions') ? params.get('actions').split(',') : ['ok'];
+    const title = params.get('title') ? decodeURIComponent(params.get('title')) : '';
     const container = document.getElementById('buttons');
     actions.forEach(action => {
       const btn = document.createElement('button');
@@ -64,6 +66,10 @@
       });
       container.appendChild(btn);
     });
+    if (title) {
+      document.getElementById('alert-title').textContent = title;
+      document.getElementById('alert-msg').textContent = 'O tempo acabou.';
+    }
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     function beep() {
       const osc = ctx.createOscillator();

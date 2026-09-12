@@ -54,3 +54,11 @@ test('formattedTime pads single digit seconds with leading zero', () => {
   store.setTime(9)
   expect(store.formattedTime).toBe('00:00:09')
 })
+
+test('setTitle sets title', () => {
+  const store = useCounterStore()
+  store.setTitle('Meu Cronômetro')
+  expect(store.title).toBe('Meu Cronômetro')
+})
+
+

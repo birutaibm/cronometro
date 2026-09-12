@@ -5,6 +5,7 @@ export const useCounterStore = defineStore('counter', () => {
   const remainingSeconds = ref(0)
   const isRunning = ref(false)
   const totalSeconds = ref(0)
+  const title = ref('')
 
   const formattedTime = computed(() => {
     const hrs = Math.floor(remainingSeconds.value / 3600)
@@ -17,6 +18,10 @@ export const useCounterStore = defineStore('counter', () => {
     totalSeconds.value = seconds
     remainingSeconds.value = seconds
     isRunning.value = false
+  }
+
+  function setTitle(value: string) {
+    title.value = value
   }
 
   function setRunning(value: boolean) {
@@ -37,8 +42,10 @@ export const useCounterStore = defineStore('counter', () => {
     remainingSeconds,
     isRunning,
     totalSeconds,
+    title,
     formattedTime,
     setTime,
+    setTitle,
     setRunning,
     reset,
     finish,

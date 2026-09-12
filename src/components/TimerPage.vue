@@ -6,6 +6,7 @@ import { useCounterStore } from '../stores/counter'
 const router = useRouter()
 const route = useRoute()
 const store = useCounterStore()
+const title = computed(() => store.title)
 
 let cleanupTick: (() => void) | null = null
 let cleanupFinished: (() => void) | null = null
@@ -40,7 +41,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="container">
     <div class="card">
-      <h2>Cronômetro</h2>
+      <h2>{{ title || 'Cronômetro' }}</h2>
 
       <p class="time-label">{{ formattedTime }}</p>
 

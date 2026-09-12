@@ -41,7 +41,7 @@ function createWindow() {
   })
 }
 
-function createAlertWindow(actions: string[]) {
+function createAlertWindow(actions: string[], title: string = '') {
   alertWindow = new BrowserWindow({
     width: 360,
     height: 220,
@@ -59,8 +59,8 @@ function createAlertWindow(actions: string[]) {
   })
 
   const alertUrl = process.env.VITE_DEV_SERVER_URL
-    ? `${process.env.VITE_DEV_SERVER_URL}/alert.html?actions=${actions.join(',')}`
-    : `file://${path.join(__dirname, '../dist/alert.html')}?actions=${actions.join(',')}`
+    ? `${process.env.VITE_DEV_SERVER_URL}/alert.html?actions=${actions.join(',')}&title=${title}`
+    : `file://${path.join(__dirname, '../dist/alert.html')}?actions=${actions.join(',')}&title=${title}`
   alertWindow.loadURL(alertUrl)
 
   alertWindow.on('closed', () => {
@@ -68,7 +68,7 @@ function createAlertWindow(actions: string[]) {
   })
 }
 
-function startTimer(seconds: number) {
+function startTimer(seconds: number, title: string) {
   if (timerInterval) {
     clearInterval(timerInterval)
     timerInterval = null
@@ -89,7 +89,8 @@ function startTimer(seconds: number) {
         mainWindow.webContents.send('timer:finished')
       }
       const hasMainWindow = mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible()
-      createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'])
+      const encodedTitle = encodeURIComponent(title || '')
+      createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle)
     }
   }, 1000)
 }
@@ -141,8 +142,8 @@ app.on('before-quit', () => {
   }
 })
 
-ipcMain.handle('timer:start', (_, seconds: number) => {
-  startTimer(seconds)
+ipcMain.handle('timer:start', (_, seconds: number, title: string) => {
+  startTimer(seconds, title)
 })
 
 ipcMain.handle('timer:cancel', () => {

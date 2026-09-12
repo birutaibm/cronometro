@@ -8,6 +8,7 @@ const store = useCounterStore()
 const hours = ref(0)
 const minutes = ref(25)
 const seconds = ref(0)
+const title = ref('')
 const error = ref<string | null>(null)
 
 function startCountdown() {
@@ -18,8 +19,9 @@ function startCountdown() {
   }
   error.value = null
   store.setTime(totalSeconds)
+  store.setTitle(title.value)
   router.push('/timer')
-  window.electronAPI.startTimer(totalSeconds)
+  window.electronAPI.startTimer(totalSeconds, title.value)
 }
 </script>
 
@@ -28,6 +30,15 @@ function startCountdown() {
     <h1>Cronômetro</h1>
 
     <div class="card">
+      <label style="display: block; margin-bottom: 0.8rem;">
+        <span>Título:</span>
+        <input
+          type="text"
+          v-model="title"
+          class="input"
+          placeholder="Nome do cronômetro"
+        />
+      </label>
       <label style="display: block; margin-bottom: 0.8rem;">
         <span>Horas:</span>
         <input
