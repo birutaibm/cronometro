@@ -13,6 +13,6 @@
     },
     "types": ["vite/client"]
   },
-  "include": ["src/**/*", "env.d.ts", "vite.config.ts"],
+  "include": ["src/**/*", "env.d.ts", "vite.config.ts", "electron/**/*", "tests/**/*"],
   "references": [{ "path": "./tsconfig.main.json" }]
 }

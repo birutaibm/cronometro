@@ -6,8 +6,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "npx playwright test",
+    "test": "npm run test:unit && npm run test:integration",
     "test:unit": "npx jest --config jest.config.js --forceExit",
+    "test:coverage": "rm -rf coverage && npx jest --config jest.config.js --coverage --forceExit",
+    "test:integration": "npx playwright test",
     "test:ui": "npx playwright test --ui",
     "build:main": "npx tsc --project tsconfig.main.json",
     "electron:dev": "npm run build:main && node scripts/start-electron.cjs",
@@ -17,54 +19,25 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "pinia": "^2.3.1",
-    "vue": "^3.5.42",
-    "vue-router": "^4.6.4"
+    "@electron/remote": "^2.1.4",
+    "@playwright/electron": "^0.0.1",
+    "electron": "^38.2.0",
+    "pinia": "^2.2.4",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
-    "@playwright/electron": "^0.0.1",
     "@playwright/test": "^1.63.0",
-    "@types/node": "^26.4.0",
-    "@vitejs/plugin-vue": "^5.2.4",
-    "@vitejs/plugin-vue-jsx": "^4.2.0",
-    "electron": "^41.7.1",
-    "electron-builder": "^26.15.3",
-    "esbuild": "^0.28.2",
-    "esbuild-jest": "^0.5.0",
+    "@types/node": "^24.10.0",
+    "@types/vue": "^2.0.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.25.10",
     "jest": "^30.5.1",
-    "npm-force-resolutions": "^0.0.10",
-    "typescript": "^7.0.2",
-    "vite": "^6.4.3"
-  },
-  "build": {
-    "appId": "com.cronometro.app",
-    "productName": "Cronometro",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*"
-    ],
-    "win": {
-      "target": "nsis"
-    },
-    "mac": {
-      "target": "dmg"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
-  },
-  "resolutions": {
-    "@noble/hashes": "1.4.0"
-  },
-  "allowScripts": {
-    "electron@41.10.7": true,
-    "electron-winstaller@5.4.0": true,
-    "esbuild@0.25.12": true,
-    "vue-demi@0.14.10": true
+    "ts-jest": "^29.4.12",
+    "typescript": "^6.0.3",
+    "vite": "^6.3.5",
+    "vite-plugin-electron": "^0.32.1",
+    "vite-plugin-electron-renderer": "^0.5.0"
   }
 }

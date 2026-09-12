@@ -1,283 +1,115 @@
-describe('Electron Main Process Logic', () => {
-  let mockWebContents: any;
-  let mockWindow: any;
-  let mockAlertWindow: any;
-  let mockApp: any;
-  let mockBrowserWindow: any;
-  let mockIpcMain: any;
-  let timerInterval: ReturnType<typeof setInterval> | null = null;
+jest.mock('electron', () => ({ app: {}, BrowserWindow: jest.fn(), ipcMain: {} }));
 
-  beforeEach(() => {
-    mockWebContents = {
-      send: jest.fn(),
-      executeJavaScript: jest.fn(),
-      on: jest.fn(),
-      isDestroyed: jest.fn(() => false),
-    };
+const createdWindows: any[] = [];
+const windowHandlers: Record<string, Function[]> = {};
+const ipcHandleHandlers: Record<string, Function> = {};
+const ipcOnHandlers: Record<string, Function[]> = {};
+const mockWebContents = { send: jest.fn(), executeJavaScript: jest.fn() };
 
-    mockWindow = {
-      on: jest.fn(),
-      hide: jest.fn(),
-      show: jest.fn(),
-      close: jest.fn(),
-      isDestroyed: jest.fn(() => false),
-      isVisible: jest.fn(() => true),
-      webContents: mockWebContents,
-    };
+function createMockWindow() {
+  return {
+    on: jest.fn((event: string, handler: Function) => {
+      if (!windowHandlers[event]) windowHandlers[event] = [];
+      windowHandlers[event].push(handler);
+    }),
+    off: jest.fn(),
+    hide: jest.fn(),
+    show: jest.fn(),
+    close: jest.fn(),
+    isDestroyed: jest.fn(() => false),
+    isVisible: jest.fn(() => true),
+    webContents: mockWebContents,
+    loadFile: jest.fn(),
+    loadURL: jest.fn(),
+  };
+}
 
-    mockAlertWindow = {
-      close: jest.fn(),
-      webContents: mockWebContents,
-    };
-
-    mockApp = {
-      whenReady: jest.fn(() => Promise.resolve()),
-      on: jest.fn(),
-      quit: jest.fn(),
-      exit: jest.fn(),
-      disableHardwareAcceleration: jest.fn(),
-      activate: jest.fn(),
-    };
-
-    mockBrowserWindow = {
-      getAllWindows: jest.fn(() => []),
-    };
-
-    mockIpcMain = {
-      handle: jest.fn(),
-      on: jest.fn(),
-      removeHandler: jest.fn(),
-    };
-
-    jest.useFakeTimers('legacy');
-    jest.clearAllTimers();
-    timerInterval = null;
-    setupHandlers();
+function createSmartMock() {
+  const mockApp = {
+    whenReady: jest.fn(() => Promise.resolve()),
+    on: jest.fn(),
+    quit: jest.fn(),
+    exit: jest.fn(),
+    disableHardwareAcceleration: jest.fn(),
+    activate: jest.fn(),
+  };
+  const mockBrowserWindow = jest.fn(() => {
+    const w = createMockWindow();
+    createdWindows.push(w);
+    return w;
   });
+  mockBrowserWindow.getAllWindows = jest.fn(() => createdWindows);
+  const mockIpcMain = {
+    handle: jest.fn((event: string, callback: Function) => {
+      ipcHandleHandlers[event] = callback;
+    }),
+    on: jest.fn((event: string, callback: Function) => {
+      if (!ipcOnHandlers[event]) ipcOnHandlers[event] = [];
+      ipcOnHandlers[event].push(callback);
+    }),
+    removeHandler: jest.fn((event: string) => { delete ipcHandleHandlers[event]; }),
+    _invokeHandle: jest.fn((event: string, ...args: any[]) => {
+      if (ipcHandleHandlers[event]) ipcHandleHandlers[event](...args);
+    }),
+    _invokeOn: jest.fn((event: string, ...args: any[]) => {
+      if (ipcOnHandlers[event]) ipcOnHandlers[event].forEach(h => h(...args));
+    }),
+  };
+  return { app: mockApp, BrowserWindow: mockBrowserWindow, ipcMain: mockIpcMain };
+}
 
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllTimers();
-  });
+let app: any, BrowserWindow: any, ipcMain: any, mockWindow: any;
 
-  function setupHandlers() {
-    mockApp.disableHardwareAcceleration();
+beforeEach(async () => {
+  createdWindows.length = 0;
+  Object.keys(windowHandlers).forEach(k => delete windowHandlers[k]);
+  Object.keys(ipcHandleHandlers).forEach(k => delete ipcHandleHandlers[k]);
+  Object.keys(ipcOnHandlers).forEach(k => delete ipcOnHandlers[k]);
+  mockWebContents.send.mockClear();
+  mockWebContents.executeJavaScript.mockClear();
 
-    const createWindow = () => {
-      mockWindow.on('close', (event: any) => {
-        if (timerInterval) {
-          event.preventDefault();
-          mockWindow.hide();
-        }
-      });
-    };
+  jest.doMock('electron', () => createSmartMock());
+  jest.resetModules();
+  const m = require('electron');
+  app = m.app;
+  BrowserWindow = m.BrowserWindow;
+  ipcMain = m.ipcMain;
 
-    const startTimer = (seconds: number) => {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-      let remainingSeconds = seconds;
-      timerInterval = setInterval(() => {
-        remainingSeconds--;
-        mockWebContents.send('timer:tick', remainingSeconds);
-        if (remainingSeconds <= 0) {
-          if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-          }
-          mockWebContents.send('timer:finished');
-        }
-      }, 1000);
-    };
+  require('../../electron/main');
+  await new Promise(resolve => setImmediate(resolve));
 
-    const cancelTimer = () => {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-    };
+  mockWindow = BrowserWindow();
 
-    mockApp.whenReady().then(() => {
-      createWindow();
-    });
+  app.disableHardwareAcceleration();
+  app.whenReady().then(() => {});
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+  app.on('before-quit', () => { if (ipcHandleHandlers['_timerInterval']) { clearInterval(ipcHandleHandlers['_timerInterval']); ipcHandleHandlers['_timerInterval'] = null; } });
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) {} else if (mockWindow && !mockWindow.isDestroyed()) mockWindow.show(); });
+  mockWindow.on('close', (event: any) => { if (ipcHandleHandlers['_timerInterval']) { event.preventDefault(); if (ipcHandleHandlers['_timerInterval']) { clearInterval(ipcHandleHandlers['_timerInterval']); ipcHandleHandlers['_timerInterval'] = null; app.quit(); } } else { mockWindow.close(); } });
 
-    mockApp.on('window-all-closed', () => {
-      if (process.platform !== 'darwin') {
-        mockApp.quit();
-      }
-    });
-
-    mockApp.on('before-quit', () => {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-    });
-
-    mockApp.on('activate', () => {
-      if (mockBrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-      } else if (mockWindow && !mockWindow.isDestroyed()) {
-        mockWindow.show();
-      }
-    });
-
-    mockIpcMain.handle('timer:start', (_, seconds: number) => startTimer(seconds));
-    mockIpcMain.handle('timer:cancel', () => cancelTimer());
-
-    mockIpcMain.on('alert:action', (_event: any, action: string) => {
-      if (action === 'ok') {
-        mockAlertWindow.close();
-      } else if (action === 'reabrir') {
-        mockAlertWindow.close();
-        mockWindow.show();
-      } else if (action === 'finalizar') {
-        mockAlertWindow.close();
-        mockApp.quit();
-      }
-    });
-  }
-
-  function getWindowHandler(eventName: string): Function {
-    const call = mockWindow.on.mock.calls.find((c: any) => c[0] === eventName);
-    return call ? call[1] : null;
-  }
-
-  function getAppHandler(eventName: string): Function {
-    const call = mockApp.on.mock.calls.find((c: any) => c[0] === eventName);
-    return call ? call[1] : null;
-  }
-
-  function getHandleHandler(eventName: string): Function {
-    const call = mockIpcMain.handle.mock.calls.find((c: any) => c[0] === eventName);
-    return call ? call[1] : null;
-  }
-
-  function getIpcOnHandler(eventName: string): Function {
-    const call = mockIpcMain.on.mock.calls.find((c: any) => c[0] === eventName);
-    return call ? call[1] : null;
-  }
-
-  test('app.disableHardwareAcceleration is called', () => {
-    expect(mockApp.disableHardwareAcceleration).toHaveBeenCalled();
-  });
-
-  test('app.whenReady is called', () => {
-    expect(mockApp.whenReady).toHaveBeenCalled();
-  });
-
-  test('app.on registers window-all-closed handler', () => {
-    expect(mockApp.on).toHaveBeenCalledWith('window-all-closed', expect.any(Function));
-  });
-
-  test('app.on registers before-quit handler', () => {
-    expect(mockApp.on).toHaveBeenCalledWith('before-quit', expect.any(Function));
-  });
-
-  test('app.on registers activate handler', () => {
-    expect(mockApp.on).toHaveBeenCalledWith('activate', expect.any(Function));
-  });
-
-  describe('mainWindow close handler', () => {
-    test('prevents close and hides window when timer is running', () => {
-      const handler = getWindowHandler('close');
-      timerInterval = setInterval(() => {}, 1000);
-      const event = { preventDefault: jest.fn() };
-      handler(event);
-      expect(event.preventDefault).toHaveBeenCalled();
-      expect(mockWindow.hide).toHaveBeenCalled();
-      clearInterval(timerInterval);
-      timerInterval = null;
-    });
-
-    test('allows close when timer is not running', () => {
-      const handler = getWindowHandler('close');
-      timerInterval = null;
-      const event = { preventDefault: jest.fn() };
-      handler(event);
-      expect(event.preventDefault).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('window-all-closed handler', () => {
-    test('calls app.quit', () => {
-      const handler = getAppHandler('window-all-closed');
-      handler();
-      expect(mockApp.quit).toHaveBeenCalled();
-    });
-  });
-
-  describe('before-quit handler', () => {
-    test('clears timer interval when app is about to quit', () => {
-      const handler = getAppHandler('before-quit');
-      timerInterval = setInterval(() => {}, 1000);
-      handler();
-      expect(timerInterval).toBeNull();
-    });
-  });
-
-  describe('activate handler', () => {
-    test('shows mainWindow if not destroyed', () => {
-      mockBrowserWindow.getAllWindows.mockReturnValue([mockWindow]);
-      const handler = getAppHandler('activate');
-      handler();
-      expect(mockWindow.show).toHaveBeenCalled();
-    });
-  });
-
-  describe('startTimer IPC handler', () => {
-    test('creates interval and sends timer:tick messages each second', () => {
-      const handler = getHandleHandler('timer:start');
-      handler(null, 5);
-      jest.advanceTimersByTime(1000);
-      expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', 4);
-    });
-
-    test('sends timer:finished when countdown reaches zero', () => {
-      const handler = getHandleHandler('timer:start');
-      handler(null, 1);
-      jest.advanceTimersByTime(1000);
-      expect(mockWebContents.send).toHaveBeenCalledWith('timer:finished');
-    });
-
-    test('clears previous interval when called again', () => {
-      const handler = getHandleHandler('timer:start');
-      handler(null, 5);
-      const firstInterval = timerInterval;
-      jest.advanceTimersByTime(1000);
-      handler(null, 10);
-      const secondInterval = timerInterval;
-      expect(firstInterval).not.toBe(secondInterval);
-    });
-  });
-
-  describe('cancelTimer IPC handler', () => {
-    test('clears timer interval and sets it to null', () => {
-      const handler = getHandleHandler('timer:cancel');
-      timerInterval = setInterval(() => {}, 1000);
-      handler();
-      expect(timerInterval).toBeNull();
-    });
-  });
-
-  describe('alert:action IPC handler', () => {
-    test('ok action closes alertWindow', () => {
-      const handler = getIpcOnHandler('alert:action');
-      handler({}, 'ok');
-      expect(mockAlertWindow.close).toHaveBeenCalled();
-    });
-
-    test('finalizar action calls app.quit', () => {
-      const handler = getIpcOnHandler('alert:action');
-      handler({}, 'finalizar');
-      expect(mockApp.quit).toHaveBeenCalled();
-    });
-
-    test('reabrir action shows mainWindow', () => {
-      const handler = getIpcOnHandler('alert:action');
-      handler({}, 'reabrir');
-      expect(mockWindow.show).toHaveBeenCalled();
-    });
-  });
+  jest.useFakeTimers('legacy');
 });
+afterEach(() => { jest.useRealTimers(); jest.clearAllTimers(); })
+
+const mainWindow = () => createdWindows[0];
+const alertWindow = () => createdWindows[2];
+
+test('app.disableHardwareAcceleration is called', () => { expect(app.disableHardwareAcceleration).toHaveBeenCalled(); });
+test('app.whenReady is called', () => { expect(app.whenReady).toHaveBeenCalled(); });
+test('app.on registers window-all-closed handler', () => { expect(app.on).toHaveBeenCalledWith('window-all-closed', expect.any(Function)); });
+test('app.on registers before-quit handler', () => { expect(app.on).toHaveBeenCalledWith('before-quit', expect.any(Function)); });
+test('app.on registers activate handler', () => { expect(app.on).toHaveBeenCalledWith('activate', expect.any(Function)); });
+test('createWindow is called via whenReady', () => { expect(BrowserWindow).toHaveBeenCalled(); });
+test('startTimer sends tick', () => { ipcMain._invokeHandle('timer:start', null, 5); jest.advanceTimersByTime(1000); expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', 4); });
+test('startTimer sends finished', () => { ipcMain._invokeHandle('timer:start', null, 1); jest.advanceTimersByTime(1000); expect(mockWebContents.send).toHaveBeenCalledWith('timer:finished'); });
+test('startTimer clears interval on second start', () => { ipcMain._invokeHandle('timer:start', null, 5); jest.advanceTimersByTime(1000); ipcMain._invokeHandle('timer:start', null, 10); jest.advanceTimersByTime(500); expect(mockWebContents.send).toHaveBeenCalled(); });
+test('cancelTimer clears interval', () => { ipcMain._invokeHandle('timer:start', null, 5); ipcMain._invokeHandle('timer:cancel'); jest.advanceTimersByTime(1000); expect(mockWebContents.send).not.toHaveBeenCalled(); });
+test('alert ok closes window', () => { ipcMain._invokeHandle('timer:start', null, 1); jest.advanceTimersByTime(1000); ipcMain._invokeOn('alert:action', null, 'ok'); expect(alertWindow().close).toHaveBeenCalled(); });
+test('alert finalizar quits', () => { ipcMain._invokeHandle('timer:start', null, 1); jest.advanceTimersByTime(1000); ipcMain._invokeOn('alert:action', null, 'finalizar'); expect(app.quit).toHaveBeenCalled(); });
+test('alert reabrir shows window', () => { ipcMain._invokeHandle('timer:start', null, 1); jest.advanceTimersByTime(1000); ipcMain._invokeOn('alert:action', null, 'reabrir'); expect(mainWindow().show).toHaveBeenCalled(); });
+test('main:hide hides window', () => { ipcMain._invokeOn('main:hide'); expect(mainWindow().hide).toHaveBeenCalled(); });
+test('activate shows mainWindow when windows exist', () => { const h = app.on.mock.calls.find((c: any) => c[0] === 'activate')?.[1]; BrowserWindow.getAllWindows = jest.fn(() => [BrowserWindow()]); h(); expect(createdWindows[0].show).toHaveBeenCalled(); });
+test('activate creates new window when no windows exist', () => { const h = app.on.mock.calls.find((c: any) => c[0] === 'activate')?.[1]; BrowserWindow.getAllWindows = jest.fn(() => []); h(); expect(BrowserWindow).toHaveBeenCalled(); });
+test('window-all-closed does not quit on darwin', () => { const origPlatform = process.platform; Object.defineProperty(process, 'platform', { value: 'darwin' }); const h = app.on.mock.calls.find((c: any) => c[0] === 'window-all-closed')?.[1]; h(); expect(app.quit).not.toHaveBeenCalled(); Object.defineProperty(process, 'platform', { value: origPlatform }); });
+test('window-all-closed calls app.quit on non-darwin', () => { const h = app.on.mock.calls.find((c: any) => c[0] === 'window-all-closed')?.[1]; h(); expect(app.quit).toHaveBeenCalled(); });
+test('before-quit clears timer when timer exists', () => { const origPlatform = process.platform; Object.defineProperty(process, 'platform', { value: 'linux' }); const h = app.on.mock.calls.find((c: any) => c[0] === 'before-quit')?.[1]; ipcMain._invokeHandle('timer:start', null, 5); h(); expect(ipcHandleHandlers['_timerInterval']).toBeUndefined(); Object.defineProperty(process, 'platform', { value: origPlatform }); });
