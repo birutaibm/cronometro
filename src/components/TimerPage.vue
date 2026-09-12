@@ -1,41 +1,38 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useCounterStore } from '../stores/counter'
+import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useCounterStore } from '../stores/counter';
 
-const router = useRouter()
-const route = useRoute()
-const store = useCounterStore()
-const title = computed(() => store.title)
+const router = useRouter();
+const route = useRoute();
+const store = useCounterStore();
+const title = computed(() => store.title);
+const formattedTime = computed(() => store.formattedTime);
 
-let cleanupTick: (() => void) | null = null
-let cleanupFinished: (() => void) | null = null
-
-const seconds = computed(() => store.remainingSeconds)
-const formattedTime = computed(() => store.formattedTime)
-const isRunning = computed(() => store.isRunning)
+let cleanupTick: (() => void) | null = null;
+let cleanupFinished: (() => void) | null = null;
 
 onMounted(() => {
   const paramsSeconds = route.params.seconds
     ? parseInt(route.params.seconds as string)
-    : store.totalSeconds
+    : store.totalSeconds;
   if (paramsSeconds > 0) {
-    store.setTime(paramsSeconds)
+    store.setTime(paramsSeconds);
   }
 
   cleanupTick = window.electronAPI.onTick((remainingSeconds: number) => {
-    store.remainingSeconds = remainingSeconds
-  })
+    store.remainingSeconds = remainingSeconds;
+  });
 
   cleanupFinished = window.electronAPI.onFinished(() => {
-    store.finish()
-  })
-})
+    store.finish();
+  });
+});
 
 onBeforeUnmount(() => {
-  if (cleanupTick) cleanupTick()
-  if (cleanupFinished) cleanupFinished()
-})
+  if (cleanupTick) cleanupTick();
+  if (cleanupFinished) cleanupFinished();
+});
 </script>
 
 <template>
@@ -45,11 +42,9 @@ onBeforeUnmount(() => {
 
       <p class="time-label">{{ formattedTime }}</p>
 
-      <button @click="router.push('/')" class="btn-configure">
-        Configurar
-      </button>
+      <button class="btn-configure" @click="router.push('/')">Configurar</button>
 
-      <button @click="router.push('/')" class="btn-restart" style="margin-top: 0.5rem">
+      <button class="btn-restart" style="margin-top: 0.5rem" @click="router.push('/')">
         Reiniciar
       </button>
     </div>

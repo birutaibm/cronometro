@@ -2,7 +2,7 @@ jest.mock('electron', () => ({ app: {}, BrowserWindow: jest.fn(), ipcMain: {} })
 
 const createdWindows: any[] = [];
 const windowHandlers: Record<string, Function[]> = {};
-const ipcHandleHandlers: Record<string, Function> = {};
+const ipcHandleHandlers: Record<string, Function | null> = {};
 const ipcOnHandlers: Record<string, Function[]> = {};
 const mockWebContents = { send: jest.fn(), executeJavaScript: jest.fn() };
 
@@ -38,7 +38,7 @@ function createSmartMock() {
     createdWindows.push(w);
     return w;
   });
-  mockBrowserWindow.getAllWindows = jest.fn(() => createdWindows);
+  (mockBrowserWindow as any).getAllWindows = jest.fn(() => createdWindows);
   const mockIpcMain = {
     handle: jest.fn((event: string, callback: Function) => {
       ipcHandleHandlers[event] = callback;
@@ -47,12 +47,14 @@ function createSmartMock() {
       if (!ipcOnHandlers[event]) ipcOnHandlers[event] = [];
       ipcOnHandlers[event].push(callback);
     }),
-    removeHandler: jest.fn((event: string) => { delete ipcHandleHandlers[event]; }),
+    removeHandler: jest.fn((event: string) => {
+      delete ipcHandleHandlers[event];
+    }),
     _invokeHandle: jest.fn((event: string, ...args: any[]) => {
       if (ipcHandleHandlers[event]) ipcHandleHandlers[event](...args);
     }),
     _invokeOn: jest.fn((event: string, ...args: any[]) => {
-      if (ipcOnHandlers[event]) ipcOnHandlers[event].forEach(h => h(...args));
+      if (ipcOnHandlers[event]) ipcOnHandlers[event].forEach((h) => h(...args));
     }),
   };
   return { app: mockApp, BrowserWindow: mockBrowserWindow, ipcMain: mockIpcMain };
@@ -62,9 +64,9 @@ let app: any, BrowserWindow: any, ipcMain: any, mockWindow: any;
 
 beforeEach(async () => {
   createdWindows.length = 0;
-  Object.keys(windowHandlers).forEach(k => delete windowHandlers[k]);
-  Object.keys(ipcHandleHandlers).forEach(k => delete ipcHandleHandlers[k]);
-  Object.keys(ipcOnHandlers).forEach(k => delete ipcOnHandlers[k]);
+  Object.keys(windowHandlers).forEach((k) => delete windowHandlers[k]);
+  Object.keys(ipcHandleHandlers).forEach((k) => delete ipcHandleHandlers[k]);
+  Object.keys(ipcOnHandlers).forEach((k) => delete ipcOnHandlers[k]);
   mockWebContents.send.mockClear();
   mockWebContents.executeJavaScript.mockClear();
 
@@ -76,7 +78,7 @@ beforeEach(async () => {
   ipcMain = m.ipcMain;
 
   require('../../electron/main');
-  await new Promise(resolve => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 
   mockWindow = BrowserWindow();
 
@@ -87,19 +89,18 @@ beforeEach(async () => {
   });
   app.on('before-quit', () => {
     if (ipcHandleHandlers['_timerInterval']) {
-      clearInterval(ipcHandleHandlers['_timerInterval']);
-      ipcHandleHandlers['_timerInterval'] = null;
+      clearInterval(ipcHandleHandlers['_timerInterval'] as any);
     }
   });
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {}
-    else if (mockWindow && !mockWindow.isDestroyed()) mockWindow.show();
+    if (BrowserWindow.getAllWindows().length === 0) {
+    } else if (mockWindow && !mockWindow.isDestroyed()) mockWindow.show();
   });
   mockWindow.on('close', (event: any) => {
     if (ipcHandleHandlers['_timerInterval']) {
       event.preventDefault();
       if (ipcHandleHandlers['_timerInterval']) {
-        clearInterval(ipcHandleHandlers['_timerInterval']);
+        clearInterval(ipcHandleHandlers['_timerInterval'] as any);
         ipcHandleHandlers['_timerInterval'] = null;
         app.quit();
       }
@@ -108,10 +109,13 @@ beforeEach(async () => {
     }
   });
 
-  jest.useFakeTimers('legacy');
+  jest.useFakeTimers({ legacyFakeTimers: true });
 });
 
-afterEach(() => { jest.useRealTimers(); jest.clearAllTimers(); })
+afterEach(() => {
+  jest.useRealTimers();
+  jest.clearAllTimers();
+});
 
 const mainWindow = () => createdWindows[0];
 const alertWindow = () => createdWindows[2];
@@ -171,7 +175,7 @@ test('alert title is passed to alert window', () => {
   ipcMain._invokeHandle('timer:start', null, 1, 'Meu Cronômetro');
   jest.advanceTimersByTime(1000);
   expect(alertWindow().loadURL).toHaveBeenCalledWith(
-    expect.stringContaining('Meu%20Cron%C3%B4metro'),
+    expect.stringContaining('Meu%20Cron%C3%B4metro')
   );
 });
 

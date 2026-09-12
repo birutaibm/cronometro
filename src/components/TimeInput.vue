@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useCounterStore } from '../stores/counter'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useCounterStore } from '../stores/counter';
 
-const router = useRouter()
-const store = useCounterStore()
-const hours = ref(0)
-const minutes = ref(25)
-const seconds = ref(0)
-const title = ref('')
-const error = ref<string | null>(null)
+const router = useRouter();
+const store = useCounterStore();
+const hours = ref(0);
+const minutes = ref(25);
+const seconds = ref(0);
+const title = ref('');
+const error = ref<string | null>(null);
 
 function startCountdown() {
-  const totalSeconds = hours.value * 3600 + minutes.value * 60 + seconds.value
+  const totalSeconds = hours.value * 3600 + minutes.value * 60 + seconds.value;
   if (totalSeconds <= 0) {
-    error.value = 'Por favor, insira um tempo maior que 0'
-    return
+    error.value = 'Por favor, insira um tempo maior que 0';
+    return;
   }
-  error.value = null
-  store.setTime(totalSeconds)
-  store.setTitle(title.value)
-  router.push('/timer')
-  window.electronAPI.startTimer(totalSeconds, title.value)
+  error.value = null;
+  store.setTime(totalSeconds);
+  store.setTitle(title.value);
+  router.push('/timer');
+  window.electronAPI.startTimer(totalSeconds, title.value);
 }
 </script>
 
@@ -30,51 +30,26 @@ function startCountdown() {
     <h1>Cronômetro</h1>
 
     <div class="card">
-      <label style="display: block; margin-bottom: 0.8rem;">
+      <label style="display: block; margin-bottom: 0.8rem">
         <span>Título:</span>
-        <input
-          type="text"
-          v-model="title"
-          class="input"
-          placeholder="Nome do cronômetro"
-        />
+        <input v-model="title" type="text" class="input" placeholder="Nome do cronômetro" />
       </label>
-      <label style="display: block; margin-bottom: 0.8rem;">
+      <label style="display: block; margin-bottom: 0.8rem">
         <span>Horas:</span>
-        <input
-          type="number"
-          v-model="hours"
-          min="0"
-          class="input"
-          placeholder="0"
-        />
+        <input v-model="hours" type="number" min="0" class="input" placeholder="0" />
       </label>
-      <label style="display: block; margin-bottom: 0.8rem;">
+      <label style="display: block; margin-bottom: 0.8rem">
         <span>Minutos:</span>
-        <input
-          type="number"
-          v-model="minutes"
-          min="0"
-          class="input"
-          placeholder="25"
-        />
+        <input v-model="minutes" type="number" min="0" class="input" placeholder="25" />
       </label>
-      <label style="display: block; margin-bottom: 0.8rem;">
+      <label style="display: block; margin-bottom: 0.8rem">
         <span>Segundos:</span>
-        <input
-          type="number"
-          v-model="seconds"
-          min="0"
-          class="input"
-          placeholder="0"
-        />
+        <input v-model="seconds" type="number" min="0" class="input" placeholder="0" />
       </label>
 
       <p v-if="error" class="error">{{ error }}</p>
 
-      <button @click="startCountdown" class="btn-start">
-        Iniciar
-      </button>
+      <button class="btn-start" @click="startCountdown">Iniciar</button>
     </div>
   </div>
 </template>

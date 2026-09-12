@@ -1,0 +1,7 @@
+node_modules
+dist
+dist-electron
+coverage
+test-results
+*.min.js
+package-lock.json

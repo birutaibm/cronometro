@@ -11,7 +11,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client"]
+    "types": ["vite/client", "jest", "node"]
   },
   "include": ["src/**/*", "env.d.ts", "vite.config.ts", "electron/**/*", "tests/**/*"],
   "references": [{ "path": "./tsconfig.main.json" }]
