@@ -8,6 +8,11 @@ const route = useRoute();
 const store = useCounterStore();
 const title = computed(() => store.title);
 const formattedTime = computed(() => store.formattedTime);
+const finishTime = computed(() => {
+  const now = new Date();
+  now.setSeconds(now.getSeconds() + store.totalSeconds);
+  return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+});
 
 let cleanupTick: (() => void) | null = null;
 let cleanupFinished: (() => void) | null = null;
@@ -41,6 +46,7 @@ onBeforeUnmount(() => {
       <h2>{{ title || 'Cronômetro' }}</h2>
 
       <p class="time-label">{{ formattedTime }}</p>
+      <p class="finish-time">Zera às {{ finishTime }}</p>
 
       <button class="btn-configure" @click="router.push('/')">Configurar</button>
 
@@ -78,6 +84,12 @@ onBeforeUnmount(() => {
   font-weight: 300;
   margin: 1rem 0;
   color: #2c3e50;
+}
+
+.finish-time {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+  margin: 0.5rem 0;
 }
 
 .btn-configure {

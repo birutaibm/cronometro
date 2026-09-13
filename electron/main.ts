@@ -1,6 +1,11 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 
+declare global {
+  var __dirname: string;
+}
+globalThis.__dirname = globalThis.__dirname || path.dirname(process.argv[1] || '.');
+
 app.disableHardwareAcceleration();
 
 let mainWindow: BrowserWindow | null = null;
@@ -14,13 +19,14 @@ function createWindow() {
     width: 400,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(globalThis.__dirname, 'preload.js'),
       contextIsolation: true,
       webgl: false,
     },
   });
 
-  const url = process.env.VITE_DEV_SERVER_URL || path.join(__dirname, '../dist/index.html');
+  const url =
+    process.env.VITE_DEV_SERVER_URL || path.join(globalThis.__dirname, '../dist/index.html');
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(url);
   } else {
@@ -52,7 +58,7 @@ function createAlertWindow(actions: string[], title: string = '') {
     skipTaskbar: false,
     backgroundColor: '#1a1a2e',
     webPreferences: {
-      preload: path.join(__dirname, 'alert-preload.js'),
+      preload: path.join(globalThis.__dirname, 'alert-preload.js'),
       contextIsolation: true,
       webgl: false,
     },
@@ -60,7 +66,7 @@ function createAlertWindow(actions: string[], title: string = '') {
 
   const alertUrl = process.env.VITE_DEV_SERVER_URL
     ? `${process.env.VITE_DEV_SERVER_URL}/alert.html?actions=${actions.join(',')}&title=${title}`
-    : `file://${path.join(__dirname, '../dist/alert.html')}?actions=${actions.join(',')}&title=${title}`;
+    : `file://${path.join(globalThis.__dirname, '../dist/alert.html')}?actions=${actions.join(',')}&title=${title}`;
   alertWindow.loadURL(alertUrl);
 
   alertWindow.on('closed', () => {

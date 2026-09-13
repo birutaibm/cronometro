@@ -1,10 +1,4 @@
-jest.mock('electron', () => ({ app: {}, BrowserWindow: jest.fn(), ipcMain: {} }));
-
-const createdWindows: any[] = [];
-const windowHandlers: Record<string, Function[]> = {};
-const ipcHandleHandlers: Record<string, Function | null> = {};
-const ipcOnHandlers: Record<string, Function[]> = {};
-const mockWebContents = { send: jest.fn(), executeJavaScript: jest.fn() };
+const path = require('path');
 
 function createMockWindow() {
   return {
@@ -60,6 +54,11 @@ function createSmartMock() {
   return { app: mockApp, BrowserWindow: mockBrowserWindow, ipcMain: mockIpcMain };
 }
 
+const createdWindows: any[] = [];
+const windowHandlers: Record<string, Function[]> = {};
+const ipcHandleHandlers: Record<string, Function | null> = {};
+const ipcOnHandlers: Record<string, Function[]> = {};
+const mockWebContents = { send: jest.fn(), executeJavaScript: jest.fn() };
 let app: any, BrowserWindow: any, ipcMain: any, mockWindow: any;
 
 beforeEach(async () => {
@@ -72,6 +71,7 @@ beforeEach(async () => {
 
   jest.doMock('electron', () => createSmartMock());
   jest.resetModules();
+  global.__dirname = path.resolve(__dirname, '..', '..', 'electron');
   const m = require('electron');
   app = m.app;
   BrowserWindow = m.BrowserWindow;
