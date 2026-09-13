@@ -18,4 +18,6 @@ declare global {
     __router?: typeof router;
   }
 }
-window.__router = router;
+if (typeof window !== 'undefined') {
+  window.__router = router;
+}

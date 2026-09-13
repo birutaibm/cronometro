@@ -7,7 +7,8 @@ const routes = [
   { path: '/timer/:seconds?', component: TimerPage, name: 'timer' },
 ];
 
+export const BASE_URL = '/';
 export const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(BASE_URL),
   routes,
 });

@@ -1,8 +1,7 @@
 {
   "name": "cronometro",
   "version": "1.0.0",
-  "type": "module",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,7 +11,7 @@
     "test:coverage": "rm -rf coverage && npx jest --config jest.config.js --coverage --forceExit",
     "test:integration": "npx playwright test",
     "test:ui": "npx playwright test --ui",
-    "build:main": "npx tsc --project tsconfig.main.json",
+    "build:main": "npx tsc --project tsconfig.main.json && npx tsc --project tsconfig.preload.json && mv dist-electron/main.js dist-electron/main.cjs && mv dist-electron/preload.js dist-electron/preload.cjs && mv dist-electron/preload.js.map dist-electron/preload.cjs.map 2>/dev/null && mv dist-electron/alert-preload.js dist-electron/alert-preload.cjs && mv dist-electron/alert-preload.js.map dist-electron/alert-preload.cjs.map 2>/dev/null",
     "electron:dev": "npm run build:main && node scripts/start-electron.cjs",
     "electron:build": "npm run build:main && npm run build && electron-builder",
     "postinstall": "electron-builder install-app-deps",

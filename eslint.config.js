@@ -51,4 +51,15 @@ export default [
       'no-empty': 'off',
     },
   },
+  {
+    files: ['electron/**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
 ]

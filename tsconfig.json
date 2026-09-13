@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
+    "module": "CommonJS",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "strict": true,
@@ -11,8 +11,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client", "jest", "node"]
+    "types": ["vite", "vite/client", "jest", "node"]
   },
-  "include": ["src/**/*", "env.d.ts", "vite.config.ts", "electron/**/*", "tests/**/*"],
-  "references": [{ "path": "./tsconfig.main.json" }]
+  "include": ["src/**/*", "env.d.ts", "vite.config.ts", "electron/**/*", "tests/**/*"]
 }

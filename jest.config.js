@@ -2,9 +2,12 @@ export default {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests/unit'],
   testMatch: ['**/*.test.ts'],
-  moduleFileExtensions: ['ts', 'js', 'json'],
+  moduleFileExtensions: ['ts', 'js', 'json', 'vue'],
+  moduleNameMapper: {
+    '^.+\\.vue$': '<rootDir>/tests/unit/__mocks__/vue-component.js',
+  },
   transform: {
-    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
   modulePaths: ['<rootDir>'],
   modulePathIgnorePatterns: ['node_modules'],

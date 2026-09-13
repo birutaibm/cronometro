@@ -1,4 +1,11 @@
 const path = require('path');
+import {
+  createdWindows,
+  windowHandlers,
+  ipcHandleHandlers,
+  ipcOnHandlers,
+  mockWebContents,
+} from './helpers';
 
 function createMockWindow() {
   return {
@@ -54,11 +61,6 @@ function createSmartMock() {
   return { app: mockApp, BrowserWindow: mockBrowserWindow, ipcMain: mockIpcMain };
 }
 
-const createdWindows: any[] = [];
-const windowHandlers: Record<string, Function[]> = {};
-const ipcHandleHandlers: Record<string, Function | null> = {};
-const ipcOnHandlers: Record<string, Function[]> = {};
-const mockWebContents = { send: jest.fn(), executeJavaScript: jest.fn() };
 let app: any, BrowserWindow: any, ipcMain: any, mockWindow: any;
 
 beforeEach(async () => {
