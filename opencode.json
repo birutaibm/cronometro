@@ -1,0 +1,94 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "username": "cronometro-dev",
+  "default_agent": "general",
+  "shell": "/bin/bash",
+  "logLevel": "INFO",
+  "share": "disabled",
+  "autoupdate": false,
+  "snapshot": true,
+  "instructions": [
+    "AGENTS.md"
+  ],
+  "skills": {
+    "paths": [
+      ".opencode/skills"
+    ]
+  },
+  "references": {
+    "docs": {
+      "path": "./README.md",
+      "description": "Use for project overview, architecture, and setup instructions"
+    }
+  },
+  "agent": {
+    "general": {
+      "mode": "primary",
+      "description": "General-purpose agent for the Cronômetro Electron app",
+      "permission": {
+        "edit": "ask",
+        "bash": "ask"
+      }
+    },
+    "explorer": {
+      "mode": "subagent",
+      "description": "Explores and maps the codebase structure",
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    },
+    "builder": {
+      "mode": "subagent",
+      "description": "Handles building, testing, and running the project",
+      "permission": {
+        "edit": "deny",
+        "bash": "allow"
+      }
+    },
+    "reviewer": {
+      "mode": "subagent",
+      "description": "Reviews code for style, correctness, and best practices",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    }
+  },
+  "command": {
+    "test": {
+      "description": "Run the project test suite",
+      "agent": "builder",
+      "template": "Run the full test suite using $npm run test. Report results and any failures."
+    },
+    "build": {
+      "description": "Build the project for development or production",
+      "agent": "builder",
+      "template": "Build the project using $npm run build. Verify the build completes without errors."
+    },
+    "lint": {
+      "description": "Run ESLint and Prettier checks",
+      "agent": "builder",
+      "template": "Run linting using $npm run lint, then fix any issues with $npm run lint:fix. Report the status."
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": {
+      "npm run *": "allow",
+      "npx *": "allow",
+      "git *": "allow",
+      "*": "ask"
+    }
+  },
+  "formatter": true,
+  "lsp": true,
+  "tool_output": {
+    "max_lines": 200,
+    "max_bytes": 8192
+  },
+  "compaction": {
+    "auto": true,
+    "tail_turns": 15
+  }
+}
