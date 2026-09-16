@@ -58,15 +58,18 @@
   "command": {
     "test": {
       "description": "Run the project test suite",
-      "agent": "builder"
+      "agent": "builder",
+      "template": "Run the full test suite using $npm run test. Report results and any failures."
     },
     "build": {
       "description": "Build the project for development or production",
-      "agent": "builder"
+      "agent": "builder",
+      "template": "Build the project using $npm run build. Verify the build completes without errors."
     },
     "lint": {
       "description": "Run ESLint and Prettier checks",
-      "agent": "builder"
+      "agent": "builder",
+      "template": "Run linting using $npm run lint, then fix any issues with $npm run lint:fix. Report the status."
     }
   },
   "permission": {
