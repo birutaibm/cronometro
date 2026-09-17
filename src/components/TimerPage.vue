@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
 
@@ -11,8 +11,18 @@ const formattedTime = computed(() => store.formattedTime);
 const finishTime = computed(() => {
   const now = new Date();
   now.setSeconds(now.getSeconds() + store.totalSeconds);
+  now.setMilliseconds(lastRestartTimestamp.value % 1000);
   return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 });
+
+const lastRestartTimestamp = ref(Date.now());
+
+function restart() {
+  store.reset();
+  window.electronAPI.startTimer(store.totalSeconds, store.title);
+  store.setRunning(true);
+  lastRestartTimestamp.value = Date.now();
+}
 
 let cleanupTick: (() => void) | null = null;
 let cleanupFinished: (() => void) | null = null;
@@ -50,9 +60,7 @@ onBeforeUnmount(() => {
 
       <button class="btn-configure" @click="router.push('/')">Configurar</button>
 
-      <button class="btn-restart" style="margin-top: 0.5rem" @click="router.push('/')">
-        Reiniciar
-      </button>
+      <button class="btn-restart" style="margin-top: 0.5rem" @click="restart">Reiniciar</button>
     </div>
   </div>
 </template>
