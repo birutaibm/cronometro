@@ -23,6 +23,10 @@ jest.mock('vue-router', () => ({
   RouterView: 'RouterView',
 }));
 
+jest.mock('vuetify', () => ({
+  createVuetify: jest.fn(() => ({})),
+}));
+
 jest.mock('../../src/router', () => ({
   router: { name: 'mock-router' },
 }));
@@ -38,11 +42,15 @@ describe('src/main.ts', () => {
 
   test('createApp is called with App component', () => {
     const vue = require('vue');
+    const vuetify = require('vuetify');
     const mockCreateApp = vue.createApp as jest.Mock;
     const mockApp = mockCreateApp();
+    const mockCreateVuetify = vuetify.createVuetify as jest.Mock;
     require('../../src/main');
     expect(mockCreateApp).toHaveBeenCalled();
-    expect(mockApp.use).toHaveBeenCalledWith(expect.anything());
+    expect(mockCreateVuetify).toHaveBeenCalled();
+    const vuetifyInstance = mockCreateVuetify();
+    expect(mockApp.use).toHaveBeenCalledWith(vuetifyInstance);
     expect(mockApp.use).toHaveBeenCalledWith(require('../../src/router').router);
     expect(mockApp.component).toHaveBeenCalledWith('RouterLink', 'RouterLink');
     expect(mockApp.component).toHaveBeenCalledWith('RouterView', 'RouterView');

@@ -51,81 +51,24 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="container">
-    <div class="card">
-      <h2>{{ title || 'Cronômetro' }}</h2>
+  <v-container
+    fluid
+    class="d-flex align-center justify-center"
+    style="min-height: 100vh; background: #f0f2f5"
+  >
+    <v-card max-width="360" width="100%" class="pa-6" elevation="4">
+      <v-card-title class="text-h5 text-center mb-2">{{ title || 'Cronômetro' }}</v-card-title>
 
-      <p class="time-label">{{ formattedTime }}</p>
-      <p class="finish-time">Zera às {{ finishTime }}</p>
+      <v-card-text class="text-center">
+        <div class="time-label text-h2 font-weight-light mb-2">{{ formattedTime }}</div>
+        <div class="text-caption text-medium-emphasis">Zera às {{ finishTime }}</div>
+      </v-card-text>
 
-      <button class="btn-configure" @click="router.push('/')">Configurar</button>
+      <v-btn color="primary" block class="mb-2" @click="router.push('/')"> Configurar </v-btn>
 
-      <button class="btn-restart" style="margin-top: 0.5rem" @click="restart">Reiniciar</button>
-    </div>
-  </div>
+      <v-btn color="secondary" block @click="restart"> Reiniciar </v-btn>
+    </v-card>
+  </v-container>
 </template>
 
-<style scoped>
-.container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background: #f0f2f5;
-}
-
-.card {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 360px;
-  text-align: center;
-  position: relative;
-}
-
-.time-label {
-  font-size: 2.5rem;
-  font-weight: 300;
-  margin: 1rem 0;
-  color: #2c3e50;
-}
-
-.finish-time {
-  font-size: 0.85rem;
-  color: #7f8c8d;
-  margin: 0.5rem 0;
-}
-
-.btn-configure {
-  width: 100%;
-  padding: 0.8rem;
-  background: #3498db;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin: 1rem 0;
-  transition: background 0.2s;
-}
-
-.btn-configure:hover {
-  background: #2980b9;
-}
-
-.btn-restart {
-  width: 100%;
-  padding: 0.6rem;
-  background: #95a5a6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-</style>
+<style scoped></style>
