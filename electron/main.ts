@@ -1,13 +1,25 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 
-app.disableHardwareAcceleration();
-
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
 let timerInterval: ReturnType<typeof setInterval> | null = null;
 let remainingSeconds = 0;
 let totalTime = 0;
+
+function getHtmlPath() {
+  const htmlPath = app.isPackaged
+    ? path.join(app.getAppPath(), 'dist', 'index.html')
+    : path.join(__dirname, '..', 'dist', 'index.html');
+  return `file://${htmlPath}`;
+}
+
+function getAlertHtmlPath() {
+  const htmlPath = app.isPackaged
+    ? path.join(app.getAppPath(), 'dist', 'alert.html')
+    : path.join(__dirname, '..', 'dist', 'alert.html');
+  return `file://${htmlPath}`;
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -16,16 +28,11 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
-      webgl: false,
     },
   });
 
-  const url = process.env.VITE_DEV_SERVER_URL || path.join(__dirname, '../dist/index.html');
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(url);
-  } else {
-    mainWindow.loadFile(url);
-  }
+  const url = process.env.VITE_DEV_SERVER_URL || getHtmlPath();
+  mainWindow.loadURL(url);
 
   mainWindow.on('close', (event) => {
     if (process.platform !== 'darwin') {
@@ -54,13 +61,12 @@ function createAlertWindow(actions: string[], title: string = '') {
     webPreferences: {
       preload: path.join(__dirname, 'alert-preload.cjs'),
       contextIsolation: true,
-      webgl: false,
     },
   });
 
   const alertUrl = process.env.VITE_DEV_SERVER_URL
     ? `${process.env.VITE_DEV_SERVER_URL}/alert.html?actions=${actions.join(',')}&title=${title}`
-    : `file://${path.join(__dirname, '../dist/alert.html')}?actions=${actions.join(',')}&title=${title}`;
+    : `${getAlertHtmlPath()}?actions=${actions.join(',')}&title=${title}`;
   alertWindow.loadURL(alertUrl);
 
   alertWindow.on('closed', () => {

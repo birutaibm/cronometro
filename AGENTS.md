@@ -38,6 +38,9 @@ cronometro/
 │   ├── unit/                    # Testes unitários (Jest)
 │   └── integration/             # Testes de integração (Playwright)
 ├── scripts/                     # Scripts auxiliares
+│   ├── afterPack.js             # Wrapper para AppImage (no-sandbox, disable-dev-shm)
+│   ├── remove-crossorigin.js    # Remove crossorigin do index.html build
+│   └── start-electron.cjs       # Script para iniciar Vite + Electron simultaneamente no modo dev
 ├── public/                      # Assets estáticos
 ├── dist/                        # Build do Vite (gerado)
 ├── dist-electron/               # Build do Electron (gerado)
@@ -67,6 +70,12 @@ cronometro/
 - Nunca exponha `require` diretamente no renderer
 - IPC handlers no `main.ts` com `ipcMain.handle` e `ipcMain.on`
 - Limpe intervals e listeners quando não necessários
+- Use `loadURL` com `file://` para carregar HTML em apps empacotados (não use `loadFile`)
+- Use `createWebHashHistory` no router para compatibilidade com URLs `file://`
+- Use `app.isPackaged` / `app.getAppPath()` para resolução de caminhos em apps empacotados
+- `afterPack.js` gera wrapper shell para AppImage com `--no-sandbox` e `--disable-dev-shm-usage`
+- `remove-crossorigin.js` remove `crossorigin` do `index.html` build para evitar falhas em `file://`
+- Não use `webgl: false` nas webPreferences
 
 ### Código
 

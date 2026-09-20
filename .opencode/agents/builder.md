@@ -23,10 +23,12 @@ When building or testing:
 Key build details:
 
 - `build:main` compiles `tsconfig.main.json` and `tsconfig.preload.json`, outputs to `dist-electron/`
-- Vite config is in `vite.config.ts` with Vue plugin and `@` alias
+- Vite config is in `vite.config.mjs` with Vue plugin and `@` alias
 - Jest config is in `jest.config.js`
 - Playwright config is in `playwright.config.ts`
 - The main process uses CommonJS output (`.cjs` files) after build
+- `electron:build` pipeline: `build:main` → `build` → `remove-crossorigin.js` → `electron-builder`
+- `afterPack.js` wraps the Electron binary for AppImage compatibility
 
 Do not make architectural decisions. Focus on compilation, test execution, and debugging build/test failures.
 

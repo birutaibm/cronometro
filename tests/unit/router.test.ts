@@ -1,6 +1,7 @@
 jest.mock('vue-router', () => ({
   createRouter: jest.fn(() => ({ name: 'mock-router' })),
   createWebHistory: jest.fn(),
+  createWebHashHistory: jest.fn(),
 }));
 
 describe('src/router/index.ts', () => {
@@ -11,7 +12,7 @@ describe('src/router/index.ts', () => {
   test('router is created with correct routes', () => {
     const { router } = require('../../src/router');
     expect(router).toBeDefined();
-    const { createRouter, createWebHistory } = require('vue-router');
+    const { createRouter, createWebHashHistory } = require('vue-router');
     expect(createRouter).toHaveBeenCalled();
     const callArgs = (createRouter as jest.Mock).mock.calls[0][0];
     expect(callArgs.routes).toBeDefined();
@@ -22,6 +23,6 @@ describe('src/router/index.ts', () => {
     expect(callArgs.routes[1].path).toBe('/timer/:seconds?');
     expect(callArgs.routes[1].name).toBe('timer');
     expect(callArgs.routes[1].component).toBeDefined();
-    expect(createWebHistory).toHaveBeenCalled();
+    expect(createWebHashHistory).toHaveBeenCalled();
   });
 });

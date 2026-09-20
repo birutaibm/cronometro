@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { _electron } from '@playwright/test';
+import fs from 'fs';
+import os from 'os';
+import { join } from 'path';
+
+function ensureTmpDir(): string {
+  const tmpDir = join(os.homedir(), '.cache', 'cronometro-tmp');
+  fs.mkdirSync(tmpDir, { recursive: true });
+  return tmpDir;
+}
 
 function isProcessAlive(pid: number): boolean {
   try {
@@ -19,7 +28,11 @@ test.describe('Electron Timer Process Lifecycle', () => {
   let page: any;
 
   test.beforeEach(async () => {
-    electronApp = await _electron.launch({ args: ['.'] });
+    const tmpDir = ensureTmpDir();
+    electronApp = await _electron.launch({
+      args: ['--headless', '--no-sandbox', '--disable-dev-shm-usage', '.'],
+      env: { ...process.env, TMPDIR: tmpDir },
+    });
     page = await electronApp.firstWindow();
     await sleep(1000);
   });

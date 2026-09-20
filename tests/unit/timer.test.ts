@@ -33,6 +33,8 @@ function createSmartMock() {
     exit: jest.fn(),
     disableHardwareAcceleration: jest.fn(),
     activate: jest.fn(),
+    commandLine: { appendSwitch: jest.fn() },
+    setPath: jest.fn(),
   };
   const mockBrowserWindow = jest.fn(() => {
     const w = createMockWindow();

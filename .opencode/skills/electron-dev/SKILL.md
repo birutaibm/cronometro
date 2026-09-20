@@ -1,6 +1,6 @@
 ---
 name: electron-dev
-description: "Use when working with Electron main process, IPC patterns, or Electron-specific build configuration"
+description: 'Use when working with Electron main process, IPC patterns, or Electron-specific build configuration'
 ---
 
 # Electron Development
@@ -36,11 +36,21 @@ The Cronômetro project uses Electron with a main process and renderer process a
 
 4. **Security**:
    - `contextIsolation: true` always
-   - `webgl: false` for security
    - No `require` in renderer code
+
+## Electron-Specific Configuration
+
+- `loadURL` with `file://` protocol — Loads HTML in packaged apps (not `loadFile`)
+- `createWebHashHistory` — Hash-based routing for `file://` compatibility
+- `app.isPackaged` / `app.getAppPath()` — Reliable path resolution in AppImage/ASAR
+- `afterPack.js` — Wrapper script for AppImage that injects `--no-sandbox` and `--disable-dev-shm-usage`
+- `remove-crossorigin.js` — Post-build step stripping `crossorigin` from `index.html` for `file://` loading
+- `contextIsolation: true` always
+- No `require` in renderer code
 
 ## Common Issues
 
+- **Blank screen in AppImage**: Usually caused by `crossorigin` on module scripts or `createWebHistory` with `file://` URLs
 - **Timer not counting**: Check that `timerInterval` is not null and `setInterval` is firing
 - **IPC not working**: Verify preload exposes the correct API and contextIsolation is enabled
 - **Window not showing**: Check `mainWindow.isDestroyed()` before calling methods
