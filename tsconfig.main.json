@@ -8,10 +8,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "sourceMap": true
   },
-  "include": ["electron/main.ts"],
+  "include": ["electron/main.ts", "electron/database/**/*"],
   "exclude": ["node_modules", "dist", "dist-electron"]
 }

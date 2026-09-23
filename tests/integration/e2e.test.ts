@@ -51,7 +51,7 @@ test.describe('Electron Timer Process Lifecycle', () => {
 
   test('process stays alive when timer is running (window open)', async () => {
     await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(seconds);
+      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
     }, 10);
     await sleep(500);
 
@@ -63,7 +63,7 @@ test.describe('Electron Timer Process Lifecycle', () => {
 
   test('process stays alive when main window is closed while timer is running', async () => {
     await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(seconds);
+      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
     }, 10);
     await sleep(500);
 
@@ -90,7 +90,7 @@ test.describe('Electron Timer Process Lifecycle', () => {
     await sleep(500);
 
     await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(seconds);
+      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
     }, 2);
 
     await expect(page.locator('.time-label')).toHaveText('00:00:00', { timeout: 8000 });

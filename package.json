@@ -32,6 +32,7 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
+      "electron/database/migrations/**/*",
       "package.json"
     ]
   },
@@ -41,6 +42,8 @@
   "dependencies": {
     "@electron/remote": "^2.1.3",
     "@playwright/electron": "^0.0.1",
+    "better-sqlite3": "^13.0.3",
+    "knex": "^3.3.0",
     "pinia": "^2.2.4",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
@@ -49,6 +52,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.0",
     "@types/vue": "^2.0.0",

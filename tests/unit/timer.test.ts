@@ -54,7 +54,7 @@ function createSmartMock() {
       delete ipcHandleHandlers[event];
     }),
     _invokeHandle: jest.fn((event: string, ...args: any[]) => {
-      if (ipcHandleHandlers[event]) ipcHandleHandlers[event](...args);
+      if (ipcHandleHandlers[event]) return ipcHandleHandlers[event](...args);
     }),
     _invokeOn: jest.fn((event: string, ...args: any[]) => {
       if (ipcOnHandlers[event]) ipcOnHandlers[event].forEach((h) => h(...args));
@@ -72,6 +72,14 @@ beforeEach(async () => {
   Object.keys(ipcOnHandlers).forEach((k) => delete ipcOnHandlers[k]);
   mockWebContents.send.mockClear();
   mockWebContents.executeJavaScript.mockClear();
+
+  jest.doMock('../../electron/database/index', () => ({
+    initializeDatabase: jest.fn(() => Promise.resolve()),
+    createSession: jest.fn(() => Promise.resolve({ id: 1 })),
+    getSessions: jest.fn(() => Promise.resolve([])),
+    getKnex: jest.fn(),
+    isDatabaseInitialized: jest.fn(() => true),
+  }));
 
   jest.doMock('electron', () => createSmartMock());
   jest.resetModules();
@@ -113,7 +121,7 @@ beforeEach(async () => {
     }
   });
 
-  jest.useFakeTimers({ legacyFakeTimers: true });
+  jest.useFakeTimers();
 });
 
 afterEach(() => {
@@ -148,57 +156,102 @@ test('createWindow is called via whenReady', () => {
   expect(BrowserWindow).toHaveBeenCalled();
 });
 
-test('startTimer sends tick', () => {
-  ipcMain._invokeHandle('timer:start', null, 5, 'Teste');
+test('startTimer sends tick', async () => {
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 5,
+    title: 'Teste',
+  });
   jest.advanceTimersByTime(1000);
   expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', 4);
 });
 
-test('startTimer sends finished', () => {
-  ipcMain._invokeHandle('timer:start', null, 1, 'Teste');
+test('startTimer sends finished', async () => {
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 1,
+    title: 'Teste',
+  });
   jest.advanceTimersByTime(1000);
   expect(mockWebContents.send).toHaveBeenCalledWith('timer:finished');
 });
 
-test('startTimer clears interval on second start', () => {
-  ipcMain._invokeHandle('timer:start', null, 5, 'Teste');
+test('startTimer clears interval on second start', async () => {
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 5,
+    title: 'Teste',
+  });
   jest.advanceTimersByTime(1000);
-  ipcMain._invokeHandle('timer:start', null, 10, 'Teste');
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 10,
+    title: 'Teste',
+  });
   jest.advanceTimersByTime(500);
   expect(mockWebContents.send).toHaveBeenCalled();
 });
 
-test('cancelTimer clears interval', () => {
-  ipcMain._invokeHandle('timer:start', null, 5, 'Teste');
+test('cancelTimer clears interval', async () => {
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 5,
+    title: 'Teste',
+  });
   ipcMain._invokeHandle('timer:cancel');
   jest.advanceTimersByTime(1000);
   expect(mockWebContents.send).not.toHaveBeenCalled();
 });
 
-test('alert title is passed to alert window', () => {
-  ipcMain._invokeHandle('timer:start', null, 1, 'Meu Cronômetro');
+test('alert title is passed to alert window', async () => {
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 1,
+    title: 'Meu Cronômetro',
+  });
   jest.advanceTimersByTime(1000);
   expect(alertWindow().loadURL).toHaveBeenCalledWith(
     expect.stringContaining('Meu%20Cron%C3%B4metro')
   );
 });
 
-test('alert ok closes window', () => {
-  ipcMain._invokeHandle('timer:start', null, 1, 'Teste');
+test('alert ok closes window', async () => {
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 1,
+    title: 'Teste',
+  });
   jest.advanceTimersByTime(1000);
   ipcMain._invokeOn('alert:action', null, 'ok');
   expect(alertWindow().close).toHaveBeenCalled();
 });
 
-test('alert finalizar quits', () => {
-  ipcMain._invokeHandle('timer:start', null, 1, 'Teste');
+test('alert finalizar quits', async () => {
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 1,
+    title: 'Teste',
+  });
   jest.advanceTimersByTime(1000);
   ipcMain._invokeOn('alert:action', null, 'finalizar');
   expect(app.quit).toHaveBeenCalled();
 });
 
-test('alert reabrir shows window', () => {
-  ipcMain._invokeHandle('timer:start', null, 1, 'Teste');
+test('alert reabrir shows window', async () => {
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 1,
+    title: 'Teste',
+  });
   jest.advanceTimersByTime(1000);
   ipcMain._invokeOn('alert:action', null, 'reabrir');
   expect(mainWindow().show).toHaveBeenCalled();
@@ -238,11 +291,16 @@ test('window-all-closed calls app.quit on non-darwin', () => {
   expect(app.quit).toHaveBeenCalled();
 });
 
-test('before-quit clears timer when timer exists', () => {
+test('before-quit clears timer when timer exists', async () => {
   const origPlatform = process.platform;
   Object.defineProperty(process, 'platform', { value: 'linux' });
   const h = app.on.mock.calls.find((c: any) => c[0] === 'before-quit')?.[1];
-  ipcMain._invokeHandle('timer:start', null, 5, 'Teste');
+  await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 5,
+    title: 'Teste',
+  });
   h();
   expect(ipcHandleHandlers['_timerInterval']).toBeUndefined();
   Object.defineProperty(process, 'platform', { value: origPlatform });
