@@ -30,8 +30,21 @@ describe('electron/preload.ts', () => {
     const exposed = callArgs[1];
     expect(exposed.startTimer).toBeDefined();
     expect(typeof exposed.startTimer).toBe('function');
-    exposed.startTimer(10, 'Teste');
-    expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timer:start', 10, 'Teste');
+    exposed.startTimer(0, 0, 10, 'Teste');
+    expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timer:start', {
+      hours: 0,
+      minutes: 0,
+      seconds: 10,
+      title: 'Teste',
+    });
+  });
+
+  test('getSessions calls timer:get-sessions', () => {
+    const exposed = mockContextBridge.exposeInMainWorld.mock.calls[0][1];
+    expect(exposed.getSessions).toBeDefined();
+    expect(typeof exposed.getSessions).toBe('function');
+    exposed.getSessions();
+    expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timer:get-sessions');
   });
 
   test('onTick registers handler', () => {

@@ -1,9 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  startTimer: (seconds: number, title: string) => ipcRenderer.invoke('timer:start', seconds, title),
+  startTimer: (hours: number, minutes: number, seconds: number, title: string) =>
+    ipcRenderer.invoke('timer:start', { hours, minutes, seconds, title }),
   cancelTimer: () => ipcRenderer.invoke('timer:cancel'),
   hideMainWindow: () => ipcRenderer.send('main:hide'),
+  getSessions: () => ipcRenderer.invoke('timer:get-sessions'),
   onTick: (callback: (remainingSeconds: number) => void) => {
     const handler = (_: unknown, remainingSeconds: number) => callback(remainingSeconds);
     ipcRenderer.on('timer:tick', handler);

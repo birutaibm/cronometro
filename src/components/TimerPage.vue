@@ -19,7 +19,7 @@ const lastRestartTimestamp = ref(Date.now());
 
 function restart() {
   store.reset();
-  window.electronAPI.startTimer(store.totalSeconds, store.title);
+  window.electronAPI.startTimer(0, 0, store.totalSeconds, store.title);
   store.setRunning(true);
   lastRestartTimestamp.value = Date.now();
 }

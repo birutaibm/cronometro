@@ -6,3 +6,8 @@ coverage/
 *.log
 *.tsbuildinfo
 .eslintcache
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+database/backup/
+database/logs/

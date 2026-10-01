@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import { initializeDatabase, createSession, getSessions } from './database/index';
 
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
@@ -74,13 +75,14 @@ function createAlertWindow(actions: string[], title: string = '') {
   });
 }
 
-function startTimer(seconds: number, title: string) {
+function startTimer(hours: number, minutes: number, seconds: number, title: string) {
+  const totalSeconds = hours * 3600 + minutes * 60 + seconds;
   if (timerInterval) {
     clearInterval(timerInterval);
     timerInterval = null;
   }
-  totalTime = seconds;
-  remainingSeconds = seconds;
+  totalTime = totalSeconds;
+  remainingSeconds = totalSeconds;
   timerInterval = setInterval(() => {
     remainingSeconds--;
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -122,7 +124,14 @@ function recreateMainWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  try {
+    await initializeDatabase();
+  } catch (err) {
+    console.error('Failed to initialize database:', err);
+    app.quit();
+    return;
+  }
   createWindow();
 
   app.on('activate', () => {
@@ -147,12 +156,22 @@ app.on('before-quit', () => {
   }
 });
 
-ipcMain.handle('timer:start', (_, seconds: number, title: string) => {
-  startTimer(seconds, title);
-});
+ipcMain.handle(
+  'timer:start',
+  async (_, data: { hours: number; minutes: number; seconds: number; title: string }) => {
+    const { hours, minutes, seconds, title } = data;
+    const finishAt = new Date(Date.now() + (hours * 3600 + minutes * 60 + seconds) * 1000);
+    await createSession({ title, hours, minutes, seconds, finishAt });
+    startTimer(hours, minutes, seconds, title);
+  }
+);
 
 ipcMain.handle('timer:cancel', () => {
   cancelTimer();
+});
+
+ipcMain.handle('timer:get-sessions', async () => {
+  return getSessions();
 });
 
 ipcMain.on('alert:action', (event, action: string) => {
