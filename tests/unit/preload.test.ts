@@ -20,7 +20,7 @@ beforeEach(() => {
   mockIpcRenderer.send.mockClear();
   mockIpcRenderer.on.mockClear();
   mockIpcRenderer.removeListener.mockClear();
-  require('../../electron/preload');
+  require('../../src/electron/preload');
 });
 
 describe('electron/preload.ts', () => {

@@ -1,12 +1,23 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import tseslint from 'typescript-eslint'
-import pluginVue from 'eslint-plugin-vue'
-import eslintConfigPrettier from 'eslint-config-prettier'
-import vueParser from 'vue-eslint-parser'
+import js from '@eslint/js';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+import pluginVue from 'eslint-plugin-vue';
+import eslintConfigPrettier from 'eslint-config-prettier';
+import vueParser from 'vue-eslint-parser';
 
 export default [
-  { ignores: ['node_modules/**', 'dist/**', 'dist-electron/**', 'coverage/**', 'test-results/**', '*.min.js', 'release/**', 'scripts/**'] },
+  {
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      'dist-electron/**',
+      'coverage/**',
+      'test-results/**',
+      '*.min.js',
+      'release/**',
+      'scripts/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
@@ -52,7 +63,7 @@ export default [
     },
   },
   {
-    files: ['electron/**/*.cjs'],
+    files: ['src/electron/**/*.cjs'],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },
@@ -62,4 +73,4 @@ export default [
       },
     },
   },
-]
+];

@@ -10,7 +10,7 @@ describe('src/router/index.ts', () => {
   });
 
   test('router is created with correct routes', () => {
-    const { router } = require('../../src/router');
+    const { router } = require('../../src/renderer/router');
     expect(router).toBeDefined();
     const { createRouter, createWebHashHistory } = require('vue-router');
     expect(createRouter).toHaveBeenCalled();

@@ -19,32 +19,38 @@
 
 ```
 cronometro/
-├── electron/                    # Processo principal do Electron
-│   ├── main.ts                  # Entry point — cria janelas e gerencia timer
-│   ├── preload.ts               # Expõe API Electron ao renderer via contextBridge
-│   └── alert-preload.ts         # Pré-load para janela de alerta
-├── src/                         # Código-fonte do frontend Vue
-│   ├── main.ts                  # Inicialização do app Vue
-│   ├── App.vue                  # Componente raiz
-│   ├── env.d.ts                 # Declarações de tipo do Vite
-│   ├── components/
-│   │   ├── TimerPage.vue        # Página do cronômetro
-│   │   └── TimeInput.vue        # Página de entrada de tempo
-│   ├── router/
-│   │   └── index.ts             # Rotas: / e /timer/:seconds
-│   └── stores/
-│       └── counter.ts           # Store Pinia do cronômetro
+├── src/
+│   ├── renderer/                   # Código-fonte do frontend Vue
+│   │   ├── main.ts                 # Inicialização do app Vue
+│   │   ├── App.vue                 # Componente raiz
+│   │   ├── env.d.ts                # Declarações de tipo do Vite
+│   │   ├── electron-api.d.ts       # Tipos da API Electron exposta ao renderer
+│   │   ├── components/
+│   │   │   ├── TimerPage.vue       # Página do cronômetro
+│   │   │   └── TimeInput.vue       # Página de entrada de tempo
+│   │   ├── router/
+│   │   │   └── index.ts            # Rotas: / e /timer/:seconds
+│   │   └── stores/
+│   │       └── counter.ts          # Store Pinia do cronômetro
+│   └── electron/                   # Processo principal do Electron
+│       ├── main.ts                 # Entry point — cria janelas e gerencia timer
+│       ├── preload.ts              # Expõe API Electron ao renderer via contextBridge
+│       └── alert-preload.ts        # Pré-load para janela de alerta
+│           database/
+│               ├── index.ts
+│               └── migrations/
+│                   └── 001_create_sessions_table.ts
 ├── tests/
-│   ├── unit/                    # Testes unitários (Jest)
-│   └── integration/             # Testes de integração (Playwright)
-├── scripts/                     # Scripts auxiliares
-│   ├── afterPack.js             # Wrapper para AppImage (no-sandbox, disable-dev-shm)
-│   ├── remove-crossorigin.js    # Remove crossorigin do index.html build
-│   └── start-electron.cjs       # Script para iniciar Vite + Electron simultaneamente no modo dev
-├── public/                      # Assets estáticos
-├── dist/                        # Build do Vite (gerado)
-├── dist-electron/               # Build do Electron (gerado)
-└── release/                     # Aplicativos empacotados (gerado)
+│   ├── unit/                       # Testes unitários (Jest)
+│   └── integration/                # Testes de integração (Playwright)
+├── scripts/                        # Scripts auxiliares
+│   ├── afterPack.js                # Wrapper para AppImage (no-sandbox, disable-dev-shm)
+│   ├── remove-crossorigin.js       # Remove crossorigin do index.html build
+│   └── start-electron.cjs          # Script para iniciar Vite + Electron simultâneos no modo dev
+├── public/                         # Assets estáticos
+├── dist/                           # Build do Vite (gerado)
+├── dist-electron/                  # Build do Electron (gerado)
+└── release/                        # Aplicativos empacotados (gerado)
 ```
 
 ## Convenções e Boas Práticas

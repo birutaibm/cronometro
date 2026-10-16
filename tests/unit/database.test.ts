@@ -51,7 +51,7 @@ describe('electron/database/index.ts', () => {
 
   beforeEach(() => {
     jest.resetModules();
-    const module = require('../../electron/database/index');
+    const module = require('../../src/electron/database/index');
     initializeDatabase = module.initializeDatabase;
     createSession = module.createSession;
     getSessions = module.getSessions;

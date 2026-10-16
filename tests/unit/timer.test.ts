@@ -73,7 +73,7 @@ beforeEach(async () => {
   mockWebContents.send.mockClear();
   mockWebContents.executeJavaScript.mockClear();
 
-  jest.doMock('../../electron/database/index', () => ({
+  jest.doMock('../../src/electron/database/index', () => ({
     initializeDatabase: jest.fn(() => Promise.resolve()),
     createSession: jest.fn(() => Promise.resolve({ id: 1 })),
     getSessions: jest.fn(() => Promise.resolve([])),
@@ -83,13 +83,13 @@ beforeEach(async () => {
 
   jest.doMock('electron', () => createSmartMock());
   jest.resetModules();
-  global.__dirname = path.resolve(__dirname, '..', '..', 'electron');
+  global.__dirname = path.resolve(__dirname, '..', '..', 'src', 'electron');
   const m = require('electron');
   app = m.app;
   BrowserWindow = m.BrowserWindow;
   ipcMain = m.ipcMain;
 
-  require('../../electron/main');
+  require('../../src/electron/main');
   await new Promise((resolve) => setImmediate(resolve));
 
   mockWindow = BrowserWindow();

@@ -9,9 +9,9 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/renderer/*"]
     },
     "types": ["vite", "vite/client", "jest", "node"]
   },
-  "include": ["src/**/*", "env.d.ts", "electron/**/*", "tests/**/*"]
+  "include": ["src/renderer/**/*", "src/electron/**/*", "tests/**/*"]
 }

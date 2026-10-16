@@ -17,8 +17,8 @@ export default {
   modulePathIgnorePatterns: ['node_modules'],
   transformIgnorePatterns: ['<rootDir>/node_modules/(?!vuetify/)'],
   collectCoverageFrom: [
-    'electron/**/*.ts',
-    'src/**/*.ts',
+    'src/electron/**/*.ts',
+    'src/renderer/**/*.ts',
     '!node_modules/**',
     '!dist/**',
     '!dist-electron/**',
