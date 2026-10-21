@@ -53,8 +53,9 @@ describe('electron/database/index.ts', () => {
     jest.resetModules();
     const module = require('../../src/electron/database/index');
     initializeDatabase = module.initializeDatabase;
-    createSession = module.createSession;
-    getSessions = module.getSessions;
+    const getRepository = module.getRepository;
+    createSession = async (data: any) => getRepository().createSession(data);
+    getSessions = () => getRepository().getSessions();
     jest.clearAllMocks();
   });
 

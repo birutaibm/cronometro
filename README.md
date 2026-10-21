@@ -37,6 +37,11 @@ cronometro/
 │       ├── main.ts                  # Entry point — cria janelas e gerencia a lógica do timer
 │       ├── preload.ts               # Pré-load — expõe a API do Electron ao renderer via contextBridge
 │       └── alert-preload.ts         # Pré-load para a janela de alerta
+│       └── database/                # Camada de acesso a dados
+│           ├── index.ts             # Inicialização do banco, getRepository e getFileSystem
+│           ├── database-repository.ts  # Classe DatabaseRepository (createSession, getSessions)
+│           ├── file-system.ts       # Classe FileSystem (manipulação de diretórios e backup)
+│           └── migrations/          # Scripts de migração do banco de dados
 ├── tests/                           # Testes
 │   ├── unit/                        # Testes unitários (Jest)
 │   │   ├── __mocks__/               # Mocks para testes

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
-import { initializeDatabase, createSession, getSessions } from './database/index';
+import { initializeDatabase, getRepository } from './database/index';
 
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
@@ -161,7 +161,7 @@ ipcMain.handle(
   async (_, data: { hours: number; minutes: number; seconds: number; title: string }) => {
     const { hours, minutes, seconds, title } = data;
     const finishAt = new Date(Date.now() + (hours * 3600 + minutes * 60 + seconds) * 1000);
-    await createSession({ title, hours, minutes, seconds, finishAt });
+    await getRepository().createSession({ title, hours, minutes, seconds, finishAt });
     startTimer(hours, minutes, seconds, title);
   }
 );
@@ -171,7 +171,7 @@ ipcMain.handle('timer:cancel', () => {
 });
 
 ipcMain.handle('timer:get-sessions', async () => {
-  return getSessions();
+  return getRepository().getSessions();
 });
 
 ipcMain.on('alert:action', (event, action: string) => {

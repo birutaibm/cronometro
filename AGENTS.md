@@ -15,44 +15,6 @@
 - **Playwright** — Testes de integração/E2E
 - **ESLint + Prettier** — Linting e formatação
 
-## Estrutura de Diretórios
-
-```
-cronometro/
-├── src/
-│   ├── renderer/                   # Código-fonte do frontend Vue
-│   │   ├── main.ts                 # Inicialização do app Vue
-│   │   ├── App.vue                 # Componente raiz
-│   │   ├── env.d.ts                # Declarações de tipo do Vite
-│   │   ├── electron-api.d.ts       # Tipos da API Electron exposta ao renderer
-│   │   ├── components/
-│   │   │   ├── TimerPage.vue       # Página do cronômetro
-│   │   │   └── TimeInput.vue       # Página de entrada de tempo
-│   │   ├── router/
-│   │   │   └── index.ts            # Rotas: / e /timer/:seconds
-│   │   └── stores/
-│   │       └── counter.ts          # Store Pinia do cronômetro
-│   └── electron/                   # Processo principal do Electron
-│       ├── main.ts                 # Entry point — cria janelas e gerencia timer
-│       ├── preload.ts              # Expõe API Electron ao renderer via contextBridge
-│       └── alert-preload.ts        # Pré-load para janela de alerta
-│           database/
-│               ├── index.ts
-│               └── migrations/
-│                   └── 001_create_sessions_table.ts
-├── tests/
-│   ├── unit/                       # Testes unitários (Jest)
-│   └── integration/                # Testes de integração (Playwright)
-├── scripts/                        # Scripts auxiliares
-│   ├── afterPack.js                # Wrapper para AppImage (no-sandbox, disable-dev-shm)
-│   ├── remove-crossorigin.js       # Remove crossorigin do index.html build
-│   └── start-electron.cjs          # Script para iniciar Vite + Electron simultâneos no modo dev
-├── public/                         # Assets estáticos
-├── dist/                           # Build do Vite (gerado)
-├── dist-electron/                  # Build do Electron (gerado)
-└── release/                        # Aplicativos empacotados (gerado)
-```
-
 ## Convenções e Boas Práticas
 
 ### TypeScript
@@ -140,12 +102,13 @@ O processo principal expõe eventos via IPC:
 
 ## Dicas para Agentes
 
-1. **Antes de codificar**, leia os arquivos relevantes para entender o contexto
-2. **Sempre verifique** se o código compila com `npm run build` após mudanças
-3. **Teste as mudanças** com `npm run test` antes de considerar o trabalho completo
-4. **Mantenha a tipagem** rigorosa — o projeto usa TypeScript strict mode
-5. **Não modifique** `package.json` sem consultar o usuário
-6. **Siga a arquitetura** descrita na README.md — o timer roda no processo principal, não no frontend
+1. **Sempre leia o README.md antes de qualquer tarefa** e mantenha-o atualizado com qualquer alteração na estrutura de arquivos, arquitetura ou dependências do projeto.
+2. **Antes de codificar**, leia os arquivos relevantes para entender o contexto
+3. **Sempre verifique** se o código compila com `npm run build` após mudanças
+4. **Teste as mudanças** com `npm run test` antes de considerar o trabalho completo
+5. **Mantenha a tipagem** rigorosa — o projeto usa TypeScript strict mode
+6. **Não modifique** `package.json` sem consultar o usuário
+7. **Siga a arquitetura** descrita na README.md — o timer roda no processo principal, não no frontend
 
 ## Herança de LLM
 

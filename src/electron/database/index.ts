@@ -3,42 +3,21 @@ import knex from 'knex';
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { DatabaseRepository } from './database-repository';
+import { FileSystem } from './file-system';
 
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
+const fileSystem = new FileSystem(app.getPath('userData'));
 let dbInstance: ReturnType<typeof knex> | null = null;
-
-function getDataDirectory(): string {
-  return path.join(app.getPath('userData'), 'database');
-}
-
-function getDatabasePath(): string {
-  return path.join(getDataDirectory(), 'database.sqlite');
-}
-
-function getBackupDirectory(): string {
-  return path.join(getDataDirectory(), 'backup');
-}
-
-function getLogsDirectory(): string {
-  return path.join(getDataDirectory(), 'logs');
-}
-
-function ensureDirectories(): void {
-  const dirs = [getDataDirectory(), getBackupDirectory(), getLogsDirectory()];
-  for (const dir of dirs) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  }
-}
+let repository: DatabaseRepository | null = null;
 
 function getToday(): string {
   return new Date().toISOString().split('T')[0];
 }
 
 function logError(message: string): void {
-  const logFile = path.join(getLogsDirectory(), `${getToday()}.log`);
+  const logFile = path.join(fileSystem.getLogsDirectory(), `${getToday()}.log`);
   const timestamp = new Date().toISOString();
   fs.appendFileSync(logFile, `[${timestamp}] ${message}\n`, 'utf-8');
 }
@@ -68,17 +47,13 @@ async function hasPendingMigrations(instance: ReturnType<typeof knex>): Promise<
 }
 
 async function backupDatabase(): Promise<void> {
-  const sourceDb = getDatabasePath();
-  const backupDir = getBackupDirectory();
+  const sourceDb = fileSystem.getDatabasePath();
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const backupFile = path.join(backupDir, `${timestamp}.sqlite`);
-  fs.copyFileSync(sourceDb, backupFile);
+  fileSystem.createBackup(sourceDb, `${timestamp}.sqlite`);
 }
 
 export async function initializeDatabase(): Promise<void> {
-  ensureDirectories();
-
-  const dbPath = getDatabasePath();
+  const dbPath = fileSystem.getDatabasePath();
   const dbExists = fs.existsSync(dbPath);
 
   const sqliteInstance = new Database(dbPath);
@@ -120,39 +95,14 @@ export async function initializeDatabase(): Promise<void> {
   }
 }
 
-export async function createSession(data: {
-  title: string;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  finishAt: Date;
-}): Promise<{ id: number }> {
-  if (!dbInstance) {
-    throw new Error('Database not initialized');
+export function getRepository(): DatabaseRepository {
+  if (!repository) {
+    if (!dbInstance) {
+      throw new Error('Database not initialized');
+    }
+    repository = new DatabaseRepository(dbInstance);
   }
-
-  const { title, hours, minutes, seconds, finishAt } = data;
-  const finishAtStr = finishAt.toISOString();
-
-  const [id] = await dbInstance('sessions').insert({
-    title,
-    hours,
-    minutes,
-    seconds,
-    finish_at: finishAtStr,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-
-  return { id: Number(id) };
-}
-
-export async function getSessions(): Promise<Array<Record<string, unknown>>> {
-  if (!dbInstance) {
-    throw new Error('Database not initialized');
-  }
-
-  return dbInstance('sessions').select('*').orderBy('created_at', 'desc');
+  return repository;
 }
 
 export function getKnex(): ReturnType<typeof knex> {

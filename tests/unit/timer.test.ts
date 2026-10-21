@@ -77,6 +77,10 @@ beforeEach(async () => {
     initializeDatabase: jest.fn(() => Promise.resolve()),
     createSession: jest.fn(() => Promise.resolve({ id: 1 })),
     getSessions: jest.fn(() => Promise.resolve([])),
+    getRepository: jest.fn(() => ({
+      createSession: jest.fn(() => Promise.resolve({ id: 1 })),
+      getSessions: jest.fn(() => Promise.resolve([])),
+    })),
     getKnex: jest.fn(),
     isDatabaseInitialized: jest.fn(() => true),
   }));
