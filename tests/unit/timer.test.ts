@@ -168,7 +168,10 @@ test('startTimer sends tick', async () => {
     title: 'Teste',
   });
   jest.advanceTimersByTime(1000);
-  expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', 4);
+  expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', {
+    remainingSeconds: 4,
+    finishTime: expect.any(Number),
+  });
 });
 
 test('startTimer sends finished', async () => {

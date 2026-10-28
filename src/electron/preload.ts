@@ -6,8 +6,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cancelTimer: () => ipcRenderer.invoke('timer:cancel'),
   hideMainWindow: () => ipcRenderer.send('main:hide'),
   getSessions: () => ipcRenderer.invoke('timer:get-sessions'),
-  onTick: (callback: (remainingSeconds: number) => void) => {
-    const handler = (_: unknown, remainingSeconds: number) => callback(remainingSeconds);
+  onTick: (callback: (data: { remainingSeconds: number; finishTime: number }) => void) => {
+    const handler = (_: unknown, data: { remainingSeconds: number; finishTime: number }) =>
+      callback(data);
     ipcRenderer.on('timer:tick', handler);
     return () => ipcRenderer.removeListener('timer:tick', handler);
   },

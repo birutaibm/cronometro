@@ -7,6 +7,8 @@ let alertWindow: BrowserWindow | null = null;
 let timerInterval: ReturnType<typeof setInterval> | null = null;
 let remainingSeconds = 0;
 let totalTime = 0;
+let timerFinishAt = 0;
+let timerStartTime = 0;
 
 function getHtmlPath() {
   const htmlPath = app.isPackaged
@@ -75,40 +77,43 @@ function createAlertWindow(actions: string[], title: string = '') {
   });
 }
 
-function startTimer(hours: number, minutes: number, seconds: number, title: string) {
+function startTimer(hours: number, minutes: number, seconds: number, title: string): number {
   const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
+  clearTimer();
   totalTime = totalSeconds;
   remainingSeconds = totalSeconds;
+  timerStartTime = Date.now();
+  timerFinishAt = timerStartTime + totalSeconds * 1000;
+
   timerInterval = setInterval(() => {
-    remainingSeconds--;
+    const elapsed = Date.now() - timerStartTime;
+    remainingSeconds = Math.max(0, totalSeconds - Math.floor(elapsed / 1000));
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('timer:tick', remainingSeconds);
+      mainWindow.webContents.send('timer:tick', { remainingSeconds, finishTime: timerFinishAt });
     }
     if (remainingSeconds <= 0) {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
+      clearTimer();
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('timer:finished');
       }
-      const hasMainWindow =
-        mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
-      const encodedTitle = encodeURIComponent(title || '');
-      createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+      alert(title);
     }
   }, 1000);
+
+  return timerFinishAt;
 }
 
-function cancelTimer() {
+function clearTimer() {
   if (timerInterval) {
     clearInterval(timerInterval);
     timerInterval = null;
   }
+}
+
+function alert(title: string) {
+  const hasMainWindow = mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+  const encodedTitle = encodeURIComponent(title || '');
+  createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
 }
 
 function recreateMainWindow() {
@@ -160,14 +165,19 @@ ipcMain.handle(
   'timer:start',
   async (_, data: { hours: number; minutes: number; seconds: number; title: string }) => {
     const { hours, minutes, seconds, title } = data;
-    const finishAt = new Date(Date.now() + (hours * 3600 + minutes * 60 + seconds) * 1000);
-    await getRepository().createSession({ title, hours, minutes, seconds, finishAt });
-    startTimer(hours, minutes, seconds, title);
+    const finishAt = startTimer(hours, minutes, seconds, title);
+    await getRepository().createSession({
+      title,
+      hours,
+      minutes,
+      seconds,
+      finishAt: new Date(finishAt),
+    });
   }
 );
 
 ipcMain.handle('timer:cancel', () => {
-  cancelTimer();
+  clearTimer();
 });
 
 ipcMain.handle('timer:get-sessions', async () => {

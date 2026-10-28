@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
 
@@ -8,20 +8,12 @@ const route = useRoute();
 const store = useCounterStore();
 const title = computed(() => store.title);
 const formattedTime = computed(() => store.formattedTime);
-const finishTime = computed(() => {
-  const now = new Date();
-  now.setSeconds(now.getSeconds() + store.totalSeconds);
-  now.setMilliseconds(lastRestartTimestamp.value % 1000);
-  return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-});
-
-const lastRestartTimestamp = ref(Date.now());
+const formattedFinishTime = computed(() => store.formattedFinishTime);
 
 function restart() {
   store.reset();
   window.electronAPI.startTimer(0, 0, store.totalSeconds, store.title);
   store.setRunning(true);
-  lastRestartTimestamp.value = Date.now();
 }
 
 let cleanupTick: (() => void) | null = null;
@@ -35,8 +27,9 @@ onMounted(() => {
     store.setTime(paramsSeconds);
   }
 
-  cleanupTick = window.electronAPI.onTick((remainingSeconds: number) => {
-    store.remainingSeconds = remainingSeconds;
+  cleanupTick = window.electronAPI.onTick((data) => {
+    store.remainingSeconds = data.remainingSeconds;
+    store.setFinishTime(data.finishTime);
   });
 
   cleanupFinished = window.electronAPI.onFinished(() => {
@@ -61,7 +54,7 @@ onBeforeUnmount(() => {
 
       <v-card-text class="text-center">
         <div class="time-label text-h2 font-weight-light mb-2">{{ formattedTime }}</div>
-        <div class="text-caption text-medium-emphasis">Zera às {{ finishTime }}</div>
+        <div class="text-caption text-medium-emphasis">Zera às {{ formattedFinishTime }}</div>
       </v-card-text>
 
       <v-btn color="primary" block class="mb-2" @click="router.push('/')"> Configurar </v-btn>

@@ -30,7 +30,7 @@ const mockInsert = jest.fn().mockResolvedValue([1]);
 const mockDestroy = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('knex', () => {
-  const mockInstance = jest.fn(() => mockInstance);
+  const mockInstance: any = jest.fn(() => mockInstance);
   const mockSelect = jest.fn(() => mockInstance);
   mockInstance.migrate = { latest: mockMigrateLatest, getReservations: mockMigrateGetReservations };
   mockInstance.insert = mockInsert;

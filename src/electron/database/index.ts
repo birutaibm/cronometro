@@ -83,8 +83,10 @@ export async function initializeDatabase(): Promise<void> {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         logError(`Migration failed: ${errorMessage}`);
+        const error = new Error(`Database migration failed: ${errorMessage}`);
+        (error as Error & { cause?: unknown }).cause = err;
         dbInstance = null;
-        throw new Error(`Database migration failed: ${errorMessage}`, { cause: err });
+        throw error;
       }
     }
 

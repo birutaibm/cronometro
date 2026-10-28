@@ -55,7 +55,6 @@
     "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.0",
-    "@types/vue": "^2.0.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "electron": "^44.3.0",
     "electron-builder": "^25.1.8",
