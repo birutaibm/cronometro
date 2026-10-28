@@ -17,7 +17,7 @@
     "postinstall": "electron-builder install-app-deps",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"src/**/*.{ts,vue}\" \"electron/**/*.ts\" \"tests/**/*.ts\""
+    "format": "prettier --write \"src/renderer/**/*.{ts,vue}\" \"src/electron/**/*.ts\" \"tests/**/*.ts\""
   },
   "build": {
     "appId": "cronometro",
@@ -32,6 +32,7 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
+      "src/electron/database/migrations/**/*",
       "package.json"
     ]
   },
@@ -41,6 +42,8 @@
   "dependencies": {
     "@electron/remote": "^2.1.3",
     "@playwright/electron": "^0.0.1",
+    "better-sqlite3": "^13.0.3",
+    "knex": "^3.3.0",
     "pinia": "^2.2.4",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
@@ -49,6 +52,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.0",
     "@types/vue": "^2.0.0",
@@ -56,13 +60,13 @@
     "electron": "^44.3.0",
     "electron-builder": "^25.1.8",
     "esbuild": "^0.25.10",
-    "eslint": "^10.10.0",
+    "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.11.0",
     "globals": "^17.12.0",
-    "jest": "^30.5.1",
+    "jest": "^30.5.2",
     "prettier": "^3.9.6",
-    "ts-jest": "^29.4.12",
+    "ts-jest": "^29.4.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.0",
     "vite": "^6.3.5",

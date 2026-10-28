@@ -60,10 +60,13 @@
   },
   "mcp": {
     "github": {
-      "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
       "enabled": true,
-      "environment": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
     }
   },
   "formatter": true,

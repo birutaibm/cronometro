@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { useCounterStore } from '../../src/stores/counter';
+import { useCounterStore } from '../../src/renderer/stores/counter';
 
 beforeEach(() => {
   setActivePinia(createPinia());

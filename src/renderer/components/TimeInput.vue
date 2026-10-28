@@ -21,7 +21,7 @@ function startCountdown() {
   store.setTime(totalSeconds);
   store.setTitle(title.value);
   router.push('/timer');
-  window.electronAPI.startTimer(totalSeconds, title.value);
+  window.electronAPI.startTimer(hours.value, minutes.value, seconds.value, title.value);
 }
 </script>
 
