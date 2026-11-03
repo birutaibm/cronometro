@@ -36,7 +36,7 @@ function getMigrationFiles(): string[] {
   if (!fs.existsSync(MIGRATIONS_DIR)) return [];
   return fs
     .readdirSync(MIGRATIONS_DIR)
-    .filter((f) => (f.endsWith('.ts') && !f.endsWith('.d.ts')) || f.endsWith('.js'));
+    .filter((f) => f.endsWith('.js') && !f.endsWith('.d.ts'));
 }
 
 async function hasPendingMigrations(instance: ReturnType<typeof knex>): Promise<boolean> {

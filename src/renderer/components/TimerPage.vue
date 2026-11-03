@@ -12,7 +12,11 @@ const formattedFinishTime = computed(() => store.formattedFinishTime);
 
 function restart() {
   store.reset();
-  window.electronAPI.startTimer(0, 0, store.totalSeconds, store.title);
+  window.electronAPI
+    .startTimer(0, 0, store.totalSeconds, store.title)
+    .catch((err) => {
+      console.error('Failed to restart timer:', err);
+    });
   store.setRunning(true);
 }
 

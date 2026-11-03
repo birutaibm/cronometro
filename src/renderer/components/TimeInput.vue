@@ -21,7 +21,12 @@ function startCountdown() {
   store.setTime(totalSeconds);
   store.setTitle(title.value);
   router.push('/timer');
-  window.electronAPI.startTimer(hours.value, minutes.value, seconds.value, title.value);
+  window.electronAPI
+    .startTimer(hours.value, minutes.value, seconds.value, title.value)
+    .catch((err) => {
+      error.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';
+      console.error('Failed to start timer:', err);
+    });
 }
 </script>
 

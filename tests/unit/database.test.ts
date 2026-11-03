@@ -15,7 +15,7 @@ jest.mock('fs', () => ({
   existsSync: jest.fn(() => true),
   mkdirSync: jest.fn(),
   copyFileSync: jest.fn(),
-  readdirSync: jest.fn(() => ['001_create_sessions_table.ts']),
+  readdirSync: jest.fn(() => ['001_create_timers_table.js']),
   appendFileSync: jest.fn(),
 }));
 
@@ -25,14 +25,13 @@ jest.mock('path', () => ({
 }));
 
 const mockMigrateLatest = jest.fn().mockResolvedValue([]);
-const mockMigrateGetReservations = jest.fn().mockResolvedValue([]);
 const mockInsert = jest.fn().mockResolvedValue([1]);
 const mockDestroy = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('knex', () => {
   const mockInstance: any = jest.fn(() => mockInstance);
   const mockSelect = jest.fn(() => mockInstance);
-  mockInstance.migrate = { latest: mockMigrateLatest, getReservations: mockMigrateGetReservations };
+  mockInstance.migrate = { latest: mockMigrateLatest };
   mockInstance.insert = mockInsert;
   mockInstance.select = mockSelect;
   mockInstance.orderBy = jest.fn().mockReturnThis();
@@ -70,7 +69,6 @@ describe('electron/database/index.ts', () => {
   });
 
   test('initializeDatabase calls backup when pending migrations exist', async () => {
-    mockMigrateGetReservations.mockResolvedValue(['001_create_sessions_table.ts']);
     await initializeDatabase();
     expect(require('fs').copyFileSync).toHaveBeenCalled();
   });
