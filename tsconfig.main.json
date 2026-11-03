@@ -3,15 +3,15 @@
     "module": "CommonJS",
     "moduleResolution": "bundler",
     "outDir": "dist-electron",
-    "rootDir": "electron",
+    "rootDir": "src/electron",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "sourceMap": true
   },
-  "include": ["electron/main.ts"],
+  "include": ["src/electron/main.ts", "src/electron/database/**/*"],
   "exclude": ["node_modules", "dist", "dist-electron"]
 }

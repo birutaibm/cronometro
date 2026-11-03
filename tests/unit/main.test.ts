@@ -27,7 +27,7 @@ jest.mock('vuetify', () => ({
   createVuetify: jest.fn(() => ({})),
 }));
 
-jest.mock('../../src/router', () => ({
+jest.mock('../../src/renderer/router', () => ({
   router: { name: 'mock-router' },
 }));
 
@@ -46,15 +46,15 @@ describe('src/main.ts', () => {
     const mockCreateApp = vue.createApp as jest.Mock;
     const mockApp = mockCreateApp();
     const mockCreateVuetify = vuetify.createVuetify as jest.Mock;
-    require('../../src/main');
+    require('../../src/renderer/main');
     expect(mockCreateApp).toHaveBeenCalled();
     expect(mockCreateVuetify).toHaveBeenCalled();
     const vuetifyInstance = mockCreateVuetify();
     expect(mockApp.use).toHaveBeenCalledWith(vuetifyInstance);
-    expect(mockApp.use).toHaveBeenCalledWith(require('../../src/router').router);
+    expect(mockApp.use).toHaveBeenCalledWith(require('../../src/renderer/router').router);
     expect(mockApp.component).toHaveBeenCalledWith('RouterLink', 'RouterLink');
     expect(mockApp.component).toHaveBeenCalledWith('RouterView', 'RouterView');
     expect(mockApp.mount).toHaveBeenCalledWith('#app');
-    expect((global as any).window.__router).toBe(require('../../src/router').router);
+    expect((global as any).window.__router).toBe(require('../../src/renderer/router').router);
   });
 });

@@ -20,7 +20,7 @@ describe('electron/alert-preload.ts', () => {
         ipcRenderer: mockIpcRenderer,
       }));
       const { contextBridge } = require('electron');
-      require('../../electron/alert-preload');
+      require('../../src/electron/alert-preload');
 
       expect(contextBridge.exposeInMainWorld).toHaveBeenCalled();
       const callArgs = contextBridge.exposeInMainWorld.mock.calls[0];
@@ -43,7 +43,7 @@ describe('electron/alert-preload.ts', () => {
         ipcRenderer: mockIpcRenderer,
       }));
       const { contextBridge } = require('electron');
-      require('../../electron/alert-preload');
+      require('../../src/electron/alert-preload');
 
       const exposed = contextBridge.exposeInMainWorld.mock.calls[0][1];
       exposed.sendAction('reabrir');
