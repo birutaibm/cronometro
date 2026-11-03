@@ -1,14 +1,19 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { initializeDatabase, getRepository } from './database/index';
+import { Timer } from './timer';
 
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
-let timerInterval: ReturnType<typeof setInterval> | null = null;
-let remainingSeconds = 0;
-let totalTime = 0;
-let timerFinishAt = 0;
-let timerStartTime = 0;
+
+const timer = new Timer({
+  getMainWindow: () => mainWindow,
+  alert: (title: string) => {
+    const hasMainWindow = mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+    const encodedTitle = encodeURIComponent(title || '');
+    createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+  },
+});
 
 function getHtmlPath() {
   const htmlPath = app.isPackaged
@@ -39,7 +44,7 @@ function createWindow() {
 
   mainWindow.on('close', (event) => {
     if (process.platform !== 'darwin') {
-      if (timerInterval) {
+      if (!timer.isStopped()) {
         event.preventDefault();
         if (mainWindow) mainWindow.hide();
       }
@@ -77,55 +82,15 @@ function createAlertWindow(actions: string[], title: string = '') {
   });
 }
 
-function startTimer(hours: number, minutes: number, seconds: number, title: string): number {
-  const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-  clearTimer();
-  totalTime = totalSeconds;
-  remainingSeconds = totalSeconds;
-  timerStartTime = Date.now();
-  timerFinishAt = timerStartTime + totalSeconds * 1000;
-
-  timerInterval = setInterval(() => {
-    const elapsed = Date.now() - timerStartTime;
-    remainingSeconds = Math.max(0, totalSeconds - Math.floor(elapsed / 1000));
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('timer:tick', { remainingSeconds, finishTime: timerFinishAt });
-    }
-    if (remainingSeconds <= 0) {
-      clearTimer();
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('timer:finished');
-      }
-      alert(title);
-    }
-  }, 1000);
-
-  return timerFinishAt;
-}
-
-function clearTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-}
-
-function alert(title: string) {
-  const hasMainWindow = mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
-  const encodedTitle = encodeURIComponent(title || '');
-  createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
-}
-
 function recreateMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
     return;
   }
   createWindow();
-  const secondsParam = totalTime;
   const mw = mainWindow!;
   mw.webContents.on('did-finish-load', () => {
-    mw.webContents.executeJavaScript(`window.__router?.push('/timer/${secondsParam}')`);
+    mw.webContents.executeJavaScript(`window.__router?.push('/timer/${timer.getTotalTime()}')`);
   });
 }
 
@@ -155,17 +120,14 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
+  timer.cancel();
 });
 
 ipcMain.handle(
   'timer:start',
   async (_, data: { hours: number; minutes: number; seconds: number; title: string }) => {
     const { hours, minutes, seconds, title } = data;
-    const finishAt = startTimer(hours, minutes, seconds, title);
+    const finishAt = timer.start(hours, minutes, seconds, title);
     await getRepository().createSession({
       title,
       hours,
@@ -177,7 +139,7 @@ ipcMain.handle(
 );
 
 ipcMain.handle('timer:cancel', () => {
-  clearTimer();
+  timer.cancel();
 });
 
 ipcMain.handle('timer:get-sessions', async () => {
