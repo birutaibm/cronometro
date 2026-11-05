@@ -1,4 +1,4 @@
-interface Timer {
+export interface Timer {
   id: number;
   title: string;
   hours: number;

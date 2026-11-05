@@ -1,15 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-
-interface Timer {
-  id: number;
-  title: string;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  finish_at: string;
-  created_at: string;
-  updated_at: string;
-}
+import type { Timer } from '../types/electron-api';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   startTimer: (hours: number, minutes: number, seconds: number, title: string) =>
