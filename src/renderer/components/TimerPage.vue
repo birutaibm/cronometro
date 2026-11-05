@@ -38,7 +38,8 @@ onMounted(() => {
       }
       const totalSeconds = timer.hours * 3600 + timer.minutes * 60 + timer.seconds;
       store.setTitle(timer.title);
-      store.setFinishTime(new Date(timer.finish_at).getTime());
+      // finish_at vem em UTC do banco; interpreta como UTC para exibir no horário local
+      store.setFinishTime(new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime());
       store.setTime(totalSeconds);
       store.remainingSeconds = totalSeconds;
     })
