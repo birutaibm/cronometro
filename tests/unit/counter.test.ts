@@ -5,38 +5,24 @@ beforeEach(() => {
   setActivePinia(createPinia());
 });
 
-test('setTime sets totalSeconds, remainingSeconds and isRunning to false', () => {
+test('setTime sets remainingSeconds', () => {
   const store = useCounterStore();
   store.setTime(10);
-  expect(store.totalSeconds).toBe(10);
   expect(store.remainingSeconds).toBe(10);
-  expect(store.isRunning).toBe(false);
 });
 
-test('setRunning sets isRunning', () => {
-  const store = useCounterStore();
-  store.setRunning(true);
-  expect(store.isRunning).toBe(true);
-  store.setRunning(false);
-  expect(store.isRunning).toBe(false);
-});
-
-test('reset sets remainingSeconds to totalSeconds and isRunning to false', () => {
+test('reset sets remainingSeconds to 0', () => {
   const store = useCounterStore();
   store.setTime(10);
-  store.setRunning(true);
   store.reset();
-  expect(store.remainingSeconds).toBe(10);
-  expect(store.isRunning).toBe(false);
+  expect(store.remainingSeconds).toBe(0);
 });
 
-test('finish sets remainingSeconds to 0 and isRunning to false', () => {
+test('finish sets remainingSeconds to 0', () => {
   const store = useCounterStore();
   store.setTime(10);
-  store.setRunning(true);
   store.finish();
   expect(store.remainingSeconds).toBe(0);
-  expect(store.isRunning).toBe(false);
 });
 
 test('formattedTime formats seconds as HH:MM:SS', () => {

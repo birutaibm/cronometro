@@ -3,8 +3,6 @@ import { ref, computed } from 'vue';
 
 export const useCounterStore = defineStore('counter', () => {
   const remainingSeconds = ref(0);
-  const isRunning = ref(false);
-  const totalSeconds = ref(0);
   const title = ref('');
   const finishTime = ref(0);
 
@@ -25,17 +23,11 @@ export const useCounterStore = defineStore('counter', () => {
   });
 
   function setTime(seconds: number) {
-    totalSeconds.value = seconds;
     remainingSeconds.value = seconds;
-    isRunning.value = false;
   }
 
   function setTitle(value: string) {
     title.value = value;
-  }
-
-  function setRunning(value: boolean) {
-    isRunning.value = value;
   }
 
   function setFinishTime(value: number) {
@@ -43,26 +35,21 @@ export const useCounterStore = defineStore('counter', () => {
   }
 
   function reset() {
-    remainingSeconds.value = totalSeconds.value;
-    isRunning.value = false;
+    remainingSeconds.value = 0;
   }
 
   function finish() {
     remainingSeconds.value = 0;
-    isRunning.value = false;
   }
 
   return {
     remainingSeconds,
-    isRunning,
-    totalSeconds,
     title,
     finishTime,
     formattedTime,
     formattedFinishTime,
     setTime,
     setTitle,
-    setRunning,
     reset,
     setFinishTime,
     finish,

@@ -21,7 +21,6 @@ function restart() {
     .catch((err) => {
       console.error('Failed to restart timer:', err);
     });
-  store.setRunning(true);
 }
 
 let cleanupTick: (() => void) | null = null;
