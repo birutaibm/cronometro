@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
 
@@ -12,34 +12,62 @@ const formattedFinishTime = computed(() => store.formattedFinishTime);
 
 function restart() {
   store.reset();
+  const id = Number(route.params.id);
   window.electronAPI
-    .startTimer(0, 0, store.totalSeconds, store.title)
+    .restartTimer(id)
+    .then(({ id: newId }) => {
+      router.push(`/timer/${newId}`);
+    })
     .catch((err) => {
       console.error('Failed to restart timer:', err);
     });
-  store.setRunning(true);
 }
 
 let cleanupTick: (() => void) | null = null;
 let cleanupFinished: (() => void) | null = null;
 
-onMounted(() => {
-  const paramsSeconds = route.params.seconds
-    ? parseInt(route.params.seconds as string)
-    : store.totalSeconds;
-  if (paramsSeconds > 0) {
-    store.setTime(paramsSeconds);
-  }
+function loadTimer(id: number) {
+  window.electronAPI
+    .getTimer(id)
+    .then((timer) => {
+      if (!timer) {
+        router.push('/');
+        return;
+      }
+      const totalSeconds = timer.hours * 3600 + timer.minutes * 60 + timer.seconds;
+      store.setTitle(timer.title);
+      // finish_at vem em UTC do banco; interpreta como UTC para exibir no horário local
+      store.setFinishTime(new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime());
+      store.setTime(totalSeconds);
+      store.remainingSeconds = totalSeconds;
+    })
+    .catch((err) => {
+      console.error('Failed to load timer:', err);
+      router.push('/');
+    });
+}
 
-  cleanupTick = window.electronAPI.onTick((data) => {
-    store.remainingSeconds = data.remainingSeconds;
-    store.setFinishTime(data.finishTime);
+onMounted(() => {
+  const id = Number(route.params.id);
+  loadTimer(id);
+
+  cleanupTick = window.electronAPI.onTick((remainingSeconds) => {
+    store.remainingSeconds = remainingSeconds;
   });
 
   cleanupFinished = window.electronAPI.onFinished(() => {
     store.finish();
   });
 });
+
+// O Vue Router reutiliza o mesmo componente quando apenas o parâmetro :id muda,
+// então onMounted não é disparado novamente. Recarrega ao trocar de id.
+watch(
+  () => route.params.id,
+  (newId) => {
+    loadTimer(Number(newId));
+  }
+);
 
 onBeforeUnmount(() => {
   if (cleanupTick) cleanupTick();

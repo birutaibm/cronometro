@@ -27,7 +27,6 @@ export class Timer {
       this.remainingSeconds = Math.max(0, this.totalTime - Math.floor(elapsed / 1000));
       this.system.getMainWindow()?.webContents.send('timer:tick', {
         remainingSeconds: this.remainingSeconds,
-        finishTime: this.timerFinishAt,
       });
       if (this.remainingSeconds <= 0) {
         this.clear();

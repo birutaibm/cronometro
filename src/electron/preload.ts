@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { Timer } from '../types/electron-api';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   startTimer: (hours: number, minutes: number, seconds: number, title: string) =>
@@ -6,9 +7,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cancelTimer: () => ipcRenderer.invoke('timer:cancel'),
   hideMainWindow: () => ipcRenderer.send('main:hide'),
   getSessions: () => ipcRenderer.invoke('timer:get-sessions'),
-  onTick: (callback: (data: { remainingSeconds: number; finishTime: number }) => void) => {
-    const handler = (_: unknown, data: { remainingSeconds: number; finishTime: number }) =>
-      callback(data);
+  getTimer: (id: number): Promise<Timer | null> => ipcRenderer.invoke('timer:get-timer', id),
+  restartTimer: (id: number): Promise<{ id: number }> => ipcRenderer.invoke('timer:restart', id),
+  onTick: (callback: (remainingSeconds: number) => void) => {
+    const handler = (_: unknown, data: { remainingSeconds: number }) =>
+      callback(data.remainingSeconds);
     ipcRenderer.on('timer:tick', handler);
     return () => ipcRenderer.removeListener('timer:tick', handler);
   },

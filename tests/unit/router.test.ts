@@ -20,7 +20,7 @@ describe('src/router/index.ts', () => {
     expect(callArgs.routes[0].path).toBe('/');
     expect(callArgs.routes[0].name).toBe('time-input');
     expect(callArgs.routes[0].component).toBeDefined();
-    expect(callArgs.routes[1].path).toBe('/timer/:seconds?');
+    expect(callArgs.routes[1].path).toBe('/timer/:id');
     expect(callArgs.routes[1].name).toBe('timer');
     expect(callArgs.routes[1].component).toBeDefined();
     expect(createWebHashHistory).toHaveBeenCalled();

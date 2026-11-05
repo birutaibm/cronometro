@@ -73,17 +73,21 @@ beforeEach(async () => {
   mockWebContents.send.mockClear();
   mockWebContents.executeJavaScript.mockClear();
 
-  jest.doMock('../../src/electron/database/index', () => ({
-    initializeDatabase: jest.fn(() => Promise.resolve()),
-    createSession: jest.fn(() => Promise.resolve({ id: 1 })),
-    getSessions: jest.fn(() => Promise.resolve([])),
-    getRepository: jest.fn(() => ({
-      createSession: jest.fn(() => Promise.resolve({ id: 1 })),
+  jest.doMock('../../src/electron/database/index', () => {
+    const mockRepo = {
+      createTimer: jest.fn(() => Promise.resolve({ id: 1 })),
+      getTimerById: jest.fn(() => Promise.resolve(null)),
       getSessions: jest.fn(() => Promise.resolve([])),
-    })),
-    getKnex: jest.fn(),
-    isDatabaseInitialized: jest.fn(() => true),
-  }));
+    };
+    return {
+      initializeDatabase: jest.fn(() => Promise.resolve()),
+      createTimer: jest.fn(() => Promise.resolve({ id: 1 })),
+      getSessions: jest.fn(() => Promise.resolve([])),
+      getRepository: jest.fn(() => mockRepo),
+      getKnex: jest.fn(),
+      isDatabaseInitialized: jest.fn(() => true),
+    };
+  });
 
   jest.doMock('electron', () => createSmartMock());
   jest.resetModules();
@@ -160,6 +164,16 @@ test('createWindow is called via whenReady', () => {
   expect(BrowserWindow).toHaveBeenCalled();
 });
 
+test('startTimer returns { id }', async () => {
+  const result = await ipcMain._invokeHandle('timer:start', null, {
+    hours: 0,
+    minutes: 0,
+    seconds: 5,
+    title: 'Teste',
+  });
+  expect(result).toEqual({ id: 1 });
+});
+
 test('startTimer sends tick', async () => {
   await ipcMain._invokeHandle('timer:start', null, {
     hours: 0,
@@ -170,8 +184,73 @@ test('startTimer sends tick', async () => {
   jest.advanceTimersByTime(1000);
   expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', {
     remainingSeconds: 4,
-    finishTime: expect.any(Number),
   });
+});
+
+test('get-timer returns timer data or null', async () => {
+  const db = require('../../src/electron/database/index');
+  const repo = db.getRepository();
+  repo.getTimerById.mockResolvedValueOnce({
+    id: 7,
+    title: 'Meu timer',
+    hours: 0,
+    minutes: 1,
+    seconds: 30,
+    finish_at: '2026-11-04 18:00:00',
+    created_at: '2026-11-04 18:00:00',
+    updated_at: '2026-11-04 18:00:00',
+  });
+
+  const found = await ipcMain._invokeHandle('timer:get-timer', null, 7);
+  expect(found).toEqual({
+    id: 7,
+    title: 'Meu timer',
+    hours: 0,
+    minutes: 1,
+    seconds: 30,
+    finish_at: '2026-11-04 18:00:00',
+    created_at: '2026-11-04 18:00:00',
+    updated_at: '2026-11-04 18:00:00',
+  });
+
+  repo.getTimerById.mockResolvedValueOnce(null);
+  const notFound = await ipcMain._invokeHandle('timer:get-timer', null, 999);
+  expect(notFound).toBeNull();
+});
+
+test('restart creates a new timer with the same values and returns the new id', async () => {
+  const db = require('../../src/electron/database/index');
+  const repo = db.getRepository();
+  repo.getTimerById.mockResolvedValueOnce({
+    id: 3,
+    title: 'Timer original',
+    hours: 0,
+    minutes: 2,
+    seconds: 5,
+    finish_at: '2026-11-04 18:00:00',
+    created_at: '2026-11-04 18:00:00',
+    updated_at: '2026-11-04 18:00:00',
+  });
+
+  const result = await ipcMain._invokeHandle('timer:restart', null, 3);
+  expect(result).toEqual({ id: 1 });
+  expect(repo.createTimer).toHaveBeenCalledWith(
+    expect.objectContaining({
+      title: 'Timer original',
+      hours: 0,
+      minutes: 2,
+      seconds: 5,
+    })
+  );
+});
+
+test('restart returns null when timer does not exist', async () => {
+  const db = require('../../src/electron/database/index');
+  const repo = db.getRepository();
+  repo.getTimerById.mockResolvedValueOnce(null);
+
+  const result = await ipcMain._invokeHandle('timer:restart', null, 999);
+  expect(result).toBeNull();
 });
 
 test('startTimer sends finished', async () => {

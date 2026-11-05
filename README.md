@@ -32,7 +32,7 @@ cronometro/
 │   │   │   ├── TimerPage.vue        # Página do cronômetro — exibe o tempo e os botões de controle
 │   │   │   └── TimeInput.vue        # Página de entrada — permite definir horas, minutos, segundos e título
 │   │   ├── router/                  # Configuração de rotas
-│   │   │   └── index.ts             # Definição das rotas (/* e /timer/:seconds)
+│   │   │   └── index.ts             # Definição das rotas (/* e /timer/:id)
 │   │   └── stores/                  # Pinia stores
 │   │       └── counter.ts           # Store de estado do cronômetro (tempo, execução, título)
 │   └── electron/                    # Processo principal do Electron
@@ -41,7 +41,7 @@ cronometro/
 │       └── alert-preload.ts         # Pré-load para a janela de alerta
 │       └── database/                # Camada de acesso a dados
 │           ├── index.ts             # Inicialização do banco, getRepository e getFileSystem
-│           ├── database-repository.ts  # Classe DatabaseRepository (createSession, getSessions)
+│           ├── database-repository.ts  # Classe DatabaseRepository (createTimer, getSessions, getTimerById)
 │           ├── file-system.ts       # Classe FileSystem (manipulação de diretórios e backup)
 │           └── migrations/          # Scripts de migração do banco de dados
 ├── tests/                           # Testes
@@ -81,9 +81,9 @@ cronometro/
 
 1. O usuário acessa a rota `/` e insere horas, minutos, segundos e um título opcional no componente `TimeInput.vue`.
 2. Ao clicar em "Iniciar", o tempo é convertido para segundos e armazenado na Pinia store `counter`.
-3. O app navega para a rota `/timer`, onde `TimerPage.vue` conecta-se aos métodos IPC via `window.electronAPI`.
+3. O app navega para a rota `/timer/:id`, onde `TimerPage.vue` conecta-se aos métodos IPC via `window.electronAPI`.
 4. O processo principal (`src/electron/main.ts`) recebe o comando `timer:start` via `ipcMain.handle`, instancia a classe `Timer` para gerenciar a contagem regressiva e persiste a sessão no banco de dados SQLite via `DatabaseRepository`.
-5. O pré-load (`src/electron/preload.ts`) expõe a API `window.electronAPI` ao renderer via `contextBridge`, com métodos `startTimer`, `cancelTimer`, `hideMainWindow`, `getSessions`, `onTick`, `onFinished` e `sendAction`.
+5. O pré-load (`src/electron/preload.ts`) expõe a API `window.electronAPI` ao renderer via `contextBridge`, com métodos `startTimer`, `cancelTimer`, `hideMainWindow`, `getSessions`, `getTimer`, `restartTimer`, `onTick`, `onFinished` e `sendAction`.
 6. Quando o timer termina, o processo principal envia `timer:finished` e abre uma janela de alerta com opções de ação.
 7. O `src/electron/alert-preload.ts` expõe `sendAction` para comunicação da janela de alerta de volta ao processo principal.
 
@@ -112,10 +112,12 @@ A lógica do cronômetro no processo principal foi encapsulada na classe `Timer`
 
 | Direção         | Canal                | Descrição                                         |
 | --------------- | -------------------- | ------------------------------------------------- |
-| Renderer → Main | `timer:start`        | Inicia o timer (invoke)                           |
+| Renderer → Main | `timer:start`        | Inicia o timer e retorna o id criado (invoke)     |
 | Renderer → Main | `timer:cancel`       | Cancela o timer (invoke)                          |
+| Renderer → Main | `timer:get-timer`    | Obtém os dados de um timer pelo id (invoke)       |
+| Renderer → Main | `timer:restart`      | Reinicia um timer existente e retorna o novo id   |
 | Renderer → Main | `timer:get-sessions` | Obtém histórico de sessões (invoke)               |
-| Main → Renderer | `timer:tick`         | Envia segundos restantes e timestamp de término   |
+| Main → Renderer | `timer:tick`         | Envia segundos restantes (invoke)                 |
 | Main → Renderer | `timer:finished`     | Notifica que o timer acabou                       |
 | Renderer → Main | `main:hide`          | Esconde a janela principal (send)                 |
 | Renderer → Main | `alert:action`       | Ação da janela de alerta (ok, reabrir, finalizar) |

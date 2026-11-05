@@ -1,5 +1,16 @@
 import knex from 'knex';
 
+export interface TimerRow {
+  id: number;
+  title: string;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  finish_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
 function validateDuration(hours: number, minutes: number, seconds: number): void {
   if (hours < 0) {
     throw new Error('Hours must be >= 0');
@@ -22,7 +33,7 @@ function toUtcString(date: Date): string {
 class DatabaseRepository {
   constructor(private readonly dbInstance: ReturnType<typeof knex>) {}
 
-  async createSession(data: {
+  async createTimer(data: {
     title: string;
     hours: number;
     minutes: number;
@@ -44,6 +55,11 @@ class DatabaseRepository {
     });
 
     return { id: Number(id) };
+  }
+
+  async getTimerById(id: number): Promise<TimerRow | null> {
+    const row = await this.dbInstance('timers').where({ id }).first();
+    return row ? (row as TimerRow) : null;
   }
 
   async getSessions(): Promise<Array<Record<string, unknown>>> {

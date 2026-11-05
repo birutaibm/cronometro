@@ -11,7 +11,7 @@ const seconds = ref(0);
 const title = ref('');
 const error = ref<string | null>(null);
 
-function startCountdown() {
+async function startCountdown() {
   const totalSeconds = hours.value * 3600 + minutes.value * 60 + seconds.value;
   if (totalSeconds <= 0) {
     error.value = 'Por favor, insira um tempo maior que 0';
@@ -20,13 +20,18 @@ function startCountdown() {
   error.value = null;
   store.setTime(totalSeconds);
   store.setTitle(title.value);
-  router.push('/timer');
-  window.electronAPI
-    .startTimer(hours.value, minutes.value, seconds.value, title.value)
-    .catch((err) => {
-      error.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';
-      console.error('Failed to start timer:', err);
-    });
+  try {
+    const { id } = await window.electronAPI.startTimer(
+      hours.value,
+      minutes.value,
+      seconds.value,
+      title.value
+    );
+    router.push(`/timer/${id}`);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';
+    console.error('Failed to start timer:', err);
+  }
 }
 </script>
 

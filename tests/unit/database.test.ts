@@ -36,6 +36,8 @@ jest.mock('knex', () => {
   mockInstance.select = mockSelect;
   mockInstance.orderBy = jest.fn().mockReturnThis();
   mockInstance.from = jest.fn().mockReturnThis();
+  mockInstance.where = jest.fn().mockReturnThis();
+  mockInstance.first = jest.fn();
   mockInstance.then = jest.fn(function (this: any, onFulfilled: Function) {
     return Promise.resolve(onFulfilled([]));
   });
@@ -45,7 +47,8 @@ jest.mock('knex', () => {
 
 describe('electron/database/index.ts', () => {
   let initializeDatabase: any;
-  let createSession: any;
+  let createTimer: any;
+  let getTimerById: any;
   let getSessions: any;
 
   beforeEach(() => {
@@ -53,7 +56,8 @@ describe('electron/database/index.ts', () => {
     const module = require('../../src/electron/database/index');
     initializeDatabase = module.initializeDatabase;
     const getRepository = module.getRepository;
-    createSession = async (data: any) => getRepository().createSession(data);
+    createTimer = async (data: any) => getRepository().createTimer(data);
+    getTimerById = async (id: number) => getRepository().getTimerById(id);
     getSessions = () => getRepository().getSessions();
     jest.clearAllMocks();
   });
@@ -73,9 +77,9 @@ describe('electron/database/index.ts', () => {
     expect(require('fs').copyFileSync).toHaveBeenCalled();
   });
 
-  test('createSession calls insert with correct data', async () => {
+  test('createTimer calls insert with correct data', async () => {
     await initializeDatabase();
-    await createSession({
+    await createTimer({
       title: 'Teste',
       hours: 1,
       minutes: 30,
@@ -91,15 +95,47 @@ describe('electron/database/index.ts', () => {
     expect(insertCall.finish_at).toBeDefined();
   });
 
+  test('getTimerById returns the timer row or null', async () => {
+    await initializeDatabase();
+    const knexInstance: any = require('knex');
+    knexInstance.first.mockResolvedValueOnce({
+      id: 4,
+      title: 'Teste',
+      hours: 0,
+      minutes: 2,
+      seconds: 5,
+      finish_at: '2026-11-04 18:00:00',
+      created_at: '2026-11-04 18:00:00',
+      updated_at: '2026-11-04 18:00:00',
+    });
+
+    const found = await getTimerById(4);
+    expect(found).toEqual({
+      id: 4,
+      title: 'Teste',
+      hours: 0,
+      minutes: 2,
+      seconds: 5,
+      finish_at: '2026-11-04 18:00:00',
+      created_at: '2026-11-04 18:00:00',
+      updated_at: '2026-11-04 18:00:00',
+    });
+    expect(knexInstance.where).toHaveBeenCalledWith({ id: 4 });
+
+    knexInstance.first.mockResolvedValueOnce(null);
+    const notFound = await getTimerById(999);
+    expect(notFound).toBeNull();
+  });
+
   test('getSessions calls select and orderBy', async () => {
     await initializeDatabase();
     const sessions = await getSessions();
     expect(Array.isArray(sessions)).toBe(true);
   });
 
-  test('createSession throws when database not initialized', async () => {
+  test('createTimer throws when database not initialized', async () => {
     await expect(
-      createSession({ title: 'Teste', hours: 0, minutes: 0, seconds: 0, finishAt: new Date() })
+      createTimer({ title: 'Teste', hours: 0, minutes: 0, seconds: 0, finishAt: new Date() })
     ).rejects.toThrow('Database not initialized');
   });
 });
