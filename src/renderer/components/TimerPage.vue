@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
 
@@ -27,8 +27,7 @@ function restart() {
 let cleanupTick: (() => void) | null = null;
 let cleanupFinished: (() => void) | null = null;
 
-onMounted(() => {
-  const id = Number(route.params.id);
+function loadTimer(id: number) {
   window.electronAPI
     .getTimer(id)
     .then((timer) => {
@@ -47,6 +46,11 @@ onMounted(() => {
       console.error('Failed to load timer:', err);
       router.push('/');
     });
+}
+
+onMounted(() => {
+  const id = Number(route.params.id);
+  loadTimer(id);
 
   cleanupTick = window.electronAPI.onTick((remainingSeconds) => {
     store.remainingSeconds = remainingSeconds;
@@ -56,6 +60,15 @@ onMounted(() => {
     store.finish();
   });
 });
+
+// O Vue Router reutiliza o mesmo componente quando apenas o parâmetro :id muda,
+// então onMounted não é disparado novamente. Recarrega ao trocar de id.
+watch(
+  () => route.params.id,
+  (newId) => {
+    loadTimer(Number(newId));
+  }
+);
 
 onBeforeUnmount(() => {
   if (cleanupTick) cleanupTick();
