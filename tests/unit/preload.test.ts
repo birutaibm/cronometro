@@ -47,7 +47,21 @@ describe('electron/preload.ts', () => {
     expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timer:get-sessions');
   });
 
-  test('onTick registers handler', () => {
+  test('startTimer returns the created timer id', () => {
+    mockIpcRenderer.invoke.mockResolvedValue({ id: 5 });
+    const exposed = mockContextBridge.exposeInMainWorld.mock.calls[0][1];
+    return exposed.startTimer(0, 0, 10, 'Teste').then((result) => {
+      expect(result).toEqual({ id: 5 });
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timer:start', {
+        hours: 0,
+        minutes: 0,
+        seconds: 10,
+        title: 'Teste',
+      });
+    });
+  });
+
+  test('onTick registers handler and passes only remainingSeconds', () => {
     const exposed = mockContextBridge.exposeInMainWorld.mock.calls[0][1];
     const callback = jest.fn();
     exposed.onTick(callback);
@@ -55,8 +69,44 @@ describe('electron/preload.ts', () => {
     const tickCall = onCallArgs.find((c: any) => c[0] === 'timer:tick');
     expect(tickCall).toBeDefined();
     const tickHandler = tickCall![1];
-    tickHandler(null, 42);
+    tickHandler(null, { remainingSeconds: 42 });
     expect(callback).toHaveBeenCalledWith(42);
+  });
+
+  test('getTimer calls timer:get-timer with the id', () => {
+    mockIpcRenderer.invoke.mockResolvedValue({
+      id: 2,
+      title: 'T',
+      hours: 0,
+      minutes: 0,
+      seconds: 10,
+      finish_at: '',
+      created_at: '',
+      updated_at: '',
+    });
+    const exposed = mockContextBridge.exposeInMainWorld.mock.calls[0][1];
+    return exposed.getTimer(2).then((result) => {
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timer:get-timer', 2);
+      expect(result).toEqual({
+        id: 2,
+        title: 'T',
+        hours: 0,
+        minutes: 0,
+        seconds: 10,
+        finish_at: '',
+        created_at: '',
+        updated_at: '',
+      });
+    });
+  });
+
+  test('restartTimer calls timer:restart with the id', () => {
+    mockIpcRenderer.invoke.mockResolvedValue({ id: 9 });
+    const exposed = mockContextBridge.exposeInMainWorld.mock.calls[0][1];
+    return exposed.restartTimer(2).then((result) => {
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timer:restart', 2);
+      expect(result).toEqual({ id: 9 });
+    });
   });
 
   test('onFinished invokes callback', () => {

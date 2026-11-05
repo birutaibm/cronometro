@@ -5,6 +5,7 @@ import { Timer } from './timer';
 
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
+let lastTimerId: number | null = null;
 
 const timer = new Timer({
   getMainWindow: () => mainWindow,
@@ -90,7 +91,8 @@ function recreateMainWindow() {
   createWindow();
   const mw = mainWindow!;
   mw.webContents.on('did-finish-load', () => {
-    mw.webContents.executeJavaScript(`window.__router?.push('/timer/${timer.getTotalTime()}')`);
+    const target = lastTimerId != null ? `/timer/${lastTimerId}` : '/';
+    mw.webContents.executeJavaScript(`window.__router?.push('${target}')`);
   });
 }
 
@@ -128,15 +130,38 @@ ipcMain.handle(
   async (_, data: { hours: number; minutes: number; seconds: number; title: string }) => {
     const { hours, minutes, seconds, title } = data;
     const finishAt = timer.start(hours, minutes, seconds, title);
-    await getRepository().createSession({
+    const { id } = await getRepository().createTimer({
       title,
       hours,
       minutes,
       seconds,
       finishAt: new Date(finishAt),
     });
+    lastTimerId = id;
+    return { id };
   }
 );
+
+ipcMain.handle('timer:get-timer', async (_, id: number) => {
+  return getRepository().getTimerById(id);
+});
+
+ipcMain.handle('timer:restart', async (_, id: number) => {
+  const existing = await getRepository().getTimerById(id);
+  if (!existing) {
+    return null;
+  }
+  const finishAt = timer.start(existing.hours, existing.minutes, existing.seconds, existing.title);
+  const { id: newId } = await getRepository().createTimer({
+    title: existing.title,
+    hours: existing.hours,
+    minutes: existing.minutes,
+    seconds: existing.seconds,
+    finishAt: new Date(finishAt),
+  });
+  lastTimerId = newId;
+  return { id: newId };
+});
 
 ipcMain.handle('timer:cancel', () => {
   timer.cancel();

@@ -84,16 +84,19 @@ test.describe('Electron Timer Process Lifecycle', () => {
     const pid = electronApp.process().pid;
     expect(isProcessAlive(pid)).toBe(true);
 
-    await page.evaluate(() => {
-      (window as any).__router?.push('/timer/2');
-    });
-    await sleep(500);
-
-    await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
+    const { id } = await page.evaluate(async (seconds: number) => {
+      const result = await (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
+      return result;
     }, 2);
 
-    await expect(page.locator('.time-label')).toHaveText('00:00:00', { timeout: 8000 });
+    await page.evaluate((timerId: number) => {
+      (window as any).__router?.push(`/timer/${timerId}`);
+    }, id);
+    await sleep(500);
+
+    await expect(page.locator('.time-label')).toHaveText('00:00:00', {
+      timeout: 8000,
+    });
     await sleep(500);
 
     const windows = electronApp.windows();

@@ -1,4 +1,4 @@
-interface Session {
+interface Timer {
   id: number;
   title: string;
   hours: number;
@@ -10,10 +10,17 @@ interface Session {
 }
 
 interface ElectronAPI {
-  startTimer: (hours: number, minutes: number, seconds: number, title: string) => Promise<void>;
+  startTimer: (
+    hours: number,
+    minutes: number,
+    seconds: number,
+    title: string
+  ) => Promise<{ id: number }>;
   cancelTimer: () => Promise<void>;
   hideMainWindow: () => Promise<void>;
-  getSessions: () => Promise<Session[]>;
+  getSessions: () => Promise<Timer[]>;
+  getTimer: (id: number) => Promise<Timer | null>;
+  restartTimer: (id: number) => Promise<{ id: number }>;
   onTick: (callback: (remainingSeconds: number) => void) => () => void;
   onFinished: (callback: () => void) => () => void;
   sendAction: (action: string) => Promise<void>;
