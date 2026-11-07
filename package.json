@@ -21,6 +21,7 @@
   },
   "build": {
     "appId": "cronometro",
+    "npmRebuild": false,
     "linux": {
       "target": "AppImage",
       "files": [
