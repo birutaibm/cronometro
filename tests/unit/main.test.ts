@@ -348,6 +348,7 @@ test('timer:start sends finished', async () => {
   await ipcMain._invokeHandle('timer:start', null, 10);
   jest.advanceTimersByTime(1000);
   expect(mockWebContents.send).toHaveBeenCalledWith('timer:finished');
+  expect(repo.updateExecutionStatus).toHaveBeenCalledWith(1, 'FINISHED');
 });
 
 test('startTimer clears interval on second start', async () => {
@@ -523,7 +524,8 @@ test('before-quit clears timer when timer exists', async () => {
   });
   repo.createExecution.mockResolvedValueOnce({ id: 1 });
   await ipcMain._invokeHandle('timer:start', null, 10);
-  h();
+  await h();
+  expect(repo.updateExecutionStatus).toHaveBeenCalledWith(1, 'CANCELLED', expect.any(Date));
   expect(ipcHandleHandlers['_timerInterval']).toBeUndefined();
   Object.defineProperty(process, 'platform', { value: origPlatform });
 });
