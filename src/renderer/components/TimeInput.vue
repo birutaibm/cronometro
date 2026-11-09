@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useCounterStore } from '../stores/counter';
 
 const router = useRouter();
-const store = useCounterStore();
 const hours = ref(0);
 const minutes = ref(25);
 const seconds = ref(0);
@@ -18,15 +16,13 @@ async function startCountdown() {
     return;
   }
   error.value = null;
-  store.setTime(totalSeconds);
-  store.setTitle(title.value);
   try {
-    const { id } = await window.electronAPI.startTimer(
-      hours.value,
-      minutes.value,
-      seconds.value,
-      title.value
-    );
+    const { id } = await window.electronAPI.createAndStartTimer({
+      title: title.value,
+      hours: hours.value,
+      minutes: minutes.value,
+      seconds: seconds.value,
+    });
     router.push(`/timer/${id}`);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';

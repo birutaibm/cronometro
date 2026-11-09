@@ -11,8 +11,14 @@ export class Timer {
   private timerFinishAt = 0;
   private timerStartTime = 0;
   private timerInterval: ReturnType<typeof setInterval> | null = null;
+  private onFinishedCallback: (() => void) | null = null;
 
-  constructor(private readonly system: System) {}
+  constructor(
+    private readonly system: System,
+    onFinishedCallback?: () => void
+  ) {
+    this.onFinishedCallback = onFinishedCallback ?? null;
+  }
 
   start(hours: number, minutes: number, seconds: number, title: string): number {
     this.totalTime = hours * 3600 + minutes * 60 + seconds;
@@ -32,6 +38,7 @@ export class Timer {
         this.clear();
         this.system.getMainWindow()?.webContents.send('timer:finished');
         this.system.alert(title);
+        this.onFinishedCallback?.();
       }
     }, 1000);
 

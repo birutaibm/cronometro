@@ -5,16 +5,25 @@ import { Timer } from './timer';
 
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
-let lastTimerId: number | null = null;
+let currentExecutionId: number | null = null;
 
-const timer = new Timer({
-  getMainWindow: () => mainWindow,
-  alert: (title: string) => {
-    const hasMainWindow = mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
-    const encodedTitle = encodeURIComponent(title || '');
-    createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+const timer = new Timer(
+  {
+    getMainWindow: () => mainWindow,
+    alert: (title: string) => {
+      const hasMainWindow =
+        mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+      const encodedTitle = encodeURIComponent(title || '');
+      createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+    },
   },
-});
+  async () => {
+    if (currentExecutionId != null) {
+      const repo = getRepository();
+      await repo.updateExecutionStatus(currentExecutionId, 'FINISHED');
+    }
+  }
+);
 
 function getHtmlPath() {
   const htmlPath = app.isPackaged
@@ -91,7 +100,7 @@ function recreateMainWindow() {
   createWindow();
   const mw = mainWindow!;
   mw.webContents.on('did-finish-load', () => {
-    const target = lastTimerId != null ? `/timer/${lastTimerId}` : '/';
+    const target = currentExecutionId != null ? `/timer/${currentExecutionId}` : '/';
     mw.webContents.executeJavaScript(`window.__router?.push('${target}')`);
   });
 }
@@ -121,54 +130,107 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+  if (currentExecutionId != null) {
+    const repo = getRepository();
+    await repo.updateExecutionStatus(currentExecutionId, 'CANCELLED', new Date());
+    currentExecutionId = null;
+  }
   timer.cancel();
 });
 
+ipcMain.handle('timer:start', async (_, configurationId: number) => {
+  const repo = getRepository();
+  const config = await repo.getConfigurationById(configurationId);
+  if (!config) {
+    throw new Error(`Configuração ${configurationId} não encontrada`);
+  }
+
+  const totalSeconds = config.hours * 3600 + config.minutes * 60 + config.seconds;
+  const finishAt = Date.now() + totalSeconds * 1000;
+
+  // Persiste primeiro no banco, depois inicia o timer (evita timer fantasma se o banco falhar)
+  const { id } = await repo.createExecution({
+    configurationId,
+    finishAt: new Date(finishAt),
+    status: 'RUNNING',
+  });
+  currentExecutionId = id;
+
+  timer.start(config.hours, config.minutes, config.seconds, config.title);
+  return { id };
+});
+
 ipcMain.handle(
-  'timer:start',
-  async (_, data: { hours: number; minutes: number; seconds: number; title: string }) => {
-    const { hours, minutes, seconds, title } = data;
-    const finishAt = timer.start(hours, minutes, seconds, title);
-    const { id } = await getRepository().createTimer({
-      title,
-      hours,
-      minutes,
-      seconds,
+  'timer:create-and-start',
+  async (_, data: { title: string; hours: number; minutes: number; seconds: number }) => {
+    const repo = getRepository();
+    const { title, hours, minutes, seconds } = data;
+
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    const finishAt = Date.now() + totalSeconds * 1000;
+
+    // Cria a configuração primeiro
+    const { id: configId } = await repo.createConfiguration({ title, hours, minutes, seconds });
+
+    // Persiste a execução antes de iniciar o timer
+    const { id } = await repo.createExecution({
+      configurationId: configId,
       finishAt: new Date(finishAt),
+      status: 'RUNNING',
     });
-    lastTimerId = id;
+    currentExecutionId = id;
+
+    timer.start(hours, minutes, seconds, title);
     return { id };
   }
 );
 
 ipcMain.handle('timer:get-timer', async (_, id: number) => {
-  return getRepository().getTimerById(id);
+  return getRepository().getExecutionById(id);
 });
 
 ipcMain.handle('timer:restart', async (_, id: number) => {
-  const existing = await getRepository().getTimerById(id);
+  const repo = getRepository();
+  const existing = await repo.getExecutionById(id);
   if (!existing) {
     return null;
   }
-  const finishAt = timer.start(existing.hours, existing.minutes, existing.seconds, existing.title);
-  const { id: newId } = await getRepository().createTimer({
-    title: existing.title,
-    hours: existing.hours,
-    minutes: existing.minutes,
-    seconds: existing.seconds,
+
+  // Cancela a execução RUNNING existente antes de criar a nova
+  if (existing.status === 'RUNNING') {
+    await repo.updateExecutionStatus(existing.id, 'CANCELLED', new Date());
+  }
+
+  const totalSeconds = existing.hours * 3600 + existing.minutes * 60 + existing.seconds;
+  const finishAt = Date.now() + totalSeconds * 1000;
+
+  const { id: newId } = await repo.createExecution({
+    configurationId: existing.configuration_id,
     finishAt: new Date(finishAt),
+    status: 'RUNNING',
   });
-  lastTimerId = newId;
+  currentExecutionId = newId;
+
+  timer.start(existing.hours, existing.minutes, existing.seconds, existing.title);
   return { id: newId };
 });
 
-ipcMain.handle('timer:cancel', () => {
+ipcMain.handle('timer:cancel', async (_, id: number) => {
   timer.cancel();
+  const repo = getRepository();
+  await repo.updateExecutionStatus(id, 'CANCELLED', new Date());
+  if (currentExecutionId === id) {
+    currentExecutionId = null;
+  }
+});
+
+ipcMain.handle('timer:get-configurations', async () => {
+  return getRepository().getConfigurations();
 });
 
 ipcMain.handle('timer:get-sessions', async () => {
-  return getRepository().getSessions();
+  return getRepository().getExecutions();
 });
 
 ipcMain.on('alert:action', (event, action: string) => {

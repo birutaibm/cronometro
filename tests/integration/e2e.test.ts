@@ -50,20 +50,38 @@ test.describe('Electron Timer Process Lifecycle', () => {
   });
 
   test('process stays alive when timer is running (window open)', async () => {
-    await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
+    const { id } = await page.evaluate(async (seconds: number) => {
+      const result = await (window as any).electronAPI.createAndStartTimer({
+        title: 'Test',
+        hours: 0,
+        minutes: 0,
+        seconds,
+      });
+      return result;
     }, 10);
     await sleep(500);
 
     const pid = electronApp.process().pid;
     expect(isProcessAlive(pid)).toBe(true);
 
+    // Cancela a execução para permitir o encerramento limpo da janela: com o
+    // timer em execução, o handler de close esconde a janela em vez de fechá-la.
+    await page.evaluate(async (timerId: number) => {
+      await (window as any).electronAPI.cancelTimer(timerId);
+    }, id);
+
     await electronApp.close();
   });
 
   test('process stays alive when main window is closed while timer is running', async () => {
-    await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
+    const { id } = await page.evaluate(async (seconds: number) => {
+      const result = await (window as any).electronAPI.createAndStartTimer({
+        title: 'Test',
+        hours: 0,
+        minutes: 0,
+        seconds,
+      });
+      return result;
     }, 10);
     await sleep(500);
 
@@ -77,6 +95,11 @@ test.describe('Electron Timer Process Lifecycle', () => {
 
     expect(isProcessAlive(pid)).toBe(true);
 
+    // Cancela a execução para permitir o encerramento limpo do app.
+    await page.evaluate(async (timerId: number) => {
+      await (window as any).electronAPI.cancelTimer(timerId);
+    }, id);
+
     await electronApp.close();
   });
 
@@ -85,7 +108,12 @@ test.describe('Electron Timer Process Lifecycle', () => {
     expect(isProcessAlive(pid)).toBe(true);
 
     const { id } = await page.evaluate(async (seconds: number) => {
-      const result = await (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
+      const result = await (window as any).electronAPI.createAndStartTimer({
+        title: 'Test',
+        hours: 0,
+        minutes: 0,
+        seconds,
+      });
       return result;
     }, 2);
 
