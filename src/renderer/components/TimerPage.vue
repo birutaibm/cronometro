@@ -24,36 +24,6 @@ function restart() {
     });
 }
 
-let cleanupTick: (() => void) | null = null;
-let cleanupFinished: (() => void) | null = null;
-
-function loadTimer(id: number) {
-  window.electronAPI
-    .getTimer(id)
-    .then((timer) => {
-      if (!timer) {
-        router.push('/');
-        return;
-      }
-      const totalSeconds = timer.hours * 3600 + timer.minutes * 60 + timer.seconds;
-      store.setTitle(timer.title);
-      // finish_at vem em UTC do banco; interpreta como UTC para exibir no horário local
-      store.setFinishTime(new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime());
-      store.setTime(totalSeconds);
-      store.remainingSeconds = totalSeconds;
-      store.setCurrentConfig({
-        title: timer.title,
-        hours: timer.hours,
-        minutes: timer.minutes,
-        seconds: timer.seconds,
-      });
-    })
-    .catch((err) => {
-      console.error('Failed to load timer:', err);
-      router.push('/');
-    });
-}
-
 async function openConfigurePage() {
   const executionId = Number(route.params.id);
   if (!isNaN(executionId)) {
@@ -79,31 +49,28 @@ async function openConfigurePage() {
   });
 }
 
-onMounted(() => {
+onMounted(async () => {
   const id = Number(route.params.id);
-  loadTimer(id);
-
-  cleanupTick = window.electronAPI.onTick((remainingSeconds) => {
-    store.remainingSeconds = remainingSeconds;
-  });
-
-  cleanupFinished = window.electronAPI.onFinished(() => {
-    store.finish();
-  });
+  const found = await store.initTimer(id);
+  if (!found) {
+    router.push('/');
+  }
 });
 
 // O Vue Router reutiliza o mesmo componente quando apenas o parâmetro :id muda,
 // então onMounted não é disparado novamente. Recarrega ao trocar de id.
 watch(
   () => route.params.id,
-  (newId) => {
-    loadTimer(Number(newId));
+  async (newId) => {
+    const found = await store.initTimer(Number(newId));
+    if (!found) {
+      router.push('/');
+    }
   }
 );
 
 onBeforeUnmount(() => {
-  if (cleanupTick) cleanupTick();
-  if (cleanupFinished) cleanupFinished();
+  store.disposeTimer();
 });
 </script>
 
