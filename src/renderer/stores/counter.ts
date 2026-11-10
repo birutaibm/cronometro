@@ -31,29 +31,6 @@ export const useCounterStore = defineStore('counter', () => {
     });
   });
 
-  function setTime(seconds: number) {
-    remainingSeconds.value = seconds;
-  }
-
-  function setTitle(value: string) {
-    title.value = value;
-  }
-
-  function setFinishTime(value: number) {
-    finishTime.value = value;
-  }
-
-  function setCurrentConfig(
-    config: {
-      title: string;
-      hours: number;
-      minutes: number;
-      seconds: number;
-    } | null
-  ) {
-    currentConfig.value = config;
-  }
-
   async function initTimer(id: number): Promise<boolean> {
     const timer = await window.electronAPI.getTimer(id);
     if (!timer) {
@@ -61,17 +38,16 @@ export const useCounterStore = defineStore('counter', () => {
     }
 
     const totalSeconds = timer.hours * 3600 + timer.minutes * 60 + timer.seconds;
-    setTitle(timer.title);
+    title.value = timer.title;
     // finish_at vem em UTC do banco; interpreta como UTC para exibir no horário local
-    setFinishTime(new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime());
-    setTime(totalSeconds);
+    finishTime.value = new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime();
     remainingSeconds.value = totalSeconds;
-    setCurrentConfig({
+    currentConfig.value = {
       title: timer.title,
       hours: timer.hours,
       minutes: timer.minutes,
       seconds: timer.seconds,
-    });
+    };
 
     cleanupTick = window.electronAPI.onTick((remaining) => {
       remainingSeconds.value = remaining;
@@ -110,13 +86,9 @@ export const useCounterStore = defineStore('counter', () => {
     currentConfig,
     formattedTime,
     formattedFinishTime,
-    setTime,
-    setTitle,
-    setCurrentConfig,
     initTimer,
     disposeTimer,
     reset,
-    setFinishTime,
     finish,
   };
 });
