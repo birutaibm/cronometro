@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, watch, onMounted, onBeforeUnmount, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
 
@@ -9,6 +9,15 @@ const store = useCounterStore();
 const title = computed(() => store.title);
 const formattedTime = computed(() => store.formattedTime);
 const formattedFinishTime = computed(() => store.formattedFinishTime);
+
+interface TimerConfigData {
+  title: string;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+const currentConfig = ref<TimerConfigData | null>(null);
 
 function restart() {
   store.reset();
@@ -40,11 +49,42 @@ function loadTimer(id: number) {
       store.setFinishTime(new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime());
       store.setTime(totalSeconds);
       store.remainingSeconds = totalSeconds;
+      currentConfig.value = {
+        title: timer.title,
+        hours: timer.hours,
+        minutes: timer.minutes,
+        seconds: timer.seconds,
+      };
     })
     .catch((err) => {
       console.error('Failed to load timer:', err);
       router.push('/');
     });
+}
+
+async function openConfigurePage() {
+  const executionId = Number(route.params.id);
+  if (!isNaN(executionId)) {
+    try {
+      await window.electronAPI.cancelTimer(executionId);
+    } catch (err) {
+      console.error('Failed to cancel current timer before opening configure page:', err);
+    }
+  }
+
+  if (!currentConfig.value) {
+    router.push({ name: 'new-timer-configuration' });
+    return;
+  }
+  router.push({
+    name: 'new-timer-configuration',
+    query: {
+      title: currentConfig.value.title,
+      hours: String(currentConfig.value.hours),
+      minutes: String(currentConfig.value.minutes),
+      seconds: String(currentConfig.value.seconds),
+    },
+  });
 }
 
 onMounted(() => {
@@ -89,7 +129,7 @@ onBeforeUnmount(() => {
         <div class="text-caption text-medium-emphasis">Zera às {{ formattedFinishTime }}</div>
       </v-card-text>
 
-      <v-btn color="primary" block class="mb-2" @click="router.push('/')"> Configurar </v-btn>
+      <v-btn color="primary" block class="mb-2" @click="openConfigurePage"> Configurar </v-btn>
 
       <v-btn color="secondary" block @click="restart"> Reiniciar </v-btn>
     </v-card>
