@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onMounted, onBeforeUnmount, ref } from 'vue';
+import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
 
@@ -9,15 +9,7 @@ const store = useCounterStore();
 const title = computed(() => store.title);
 const formattedTime = computed(() => store.formattedTime);
 const formattedFinishTime = computed(() => store.formattedFinishTime);
-
-interface TimerConfigData {
-  title: string;
-  hours: number;
-  minutes: number;
-  seconds: number;
-}
-
-const currentConfig = ref<TimerConfigData | null>(null);
+const currentConfig = computed(() => store.currentConfig);
 
 function restart() {
   store.reset();
@@ -49,12 +41,12 @@ function loadTimer(id: number) {
       store.setFinishTime(new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime());
       store.setTime(totalSeconds);
       store.remainingSeconds = totalSeconds;
-      currentConfig.value = {
+      store.setCurrentConfig({
         title: timer.title,
         hours: timer.hours,
         minutes: timer.minutes,
         seconds: timer.seconds,
-      };
+      });
     })
     .catch((err) => {
       console.error('Failed to load timer:', err);

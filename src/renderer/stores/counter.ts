@@ -5,6 +5,12 @@ export const useCounterStore = defineStore('counter', () => {
   const remainingSeconds = ref(0);
   const title = ref('');
   const finishTime = ref(0);
+  const currentConfig = ref<{
+    title: string;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
 
   const formattedTime = computed(() => {
     const hrs = Math.floor(remainingSeconds.value / 3600);
@@ -34,6 +40,17 @@ export const useCounterStore = defineStore('counter', () => {
     finishTime.value = value;
   }
 
+  function setCurrentConfig(
+    config: {
+      title: string;
+      hours: number;
+      minutes: number;
+      seconds: number;
+    } | null
+  ) {
+    currentConfig.value = config;
+  }
+
   function reset() {
     remainingSeconds.value = 0;
   }
@@ -46,10 +63,12 @@ export const useCounterStore = defineStore('counter', () => {
     remainingSeconds,
     title,
     finishTime,
+    currentConfig,
     formattedTime,
     formattedFinishTime,
     setTime,
     setTitle,
+    setCurrentConfig,
     reset,
     setFinishTime,
     finish,
