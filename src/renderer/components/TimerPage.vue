@@ -9,6 +9,7 @@ const store = useCounterStore();
 const title = computed(() => store.title);
 const formattedTime = computed(() => store.formattedTime);
 const formattedFinishTime = computed(() => store.formattedFinishTime);
+const currentConfig = computed(() => store.currentConfig);
 
 function restart() {
   store.reset();
@@ -23,55 +24,53 @@ function restart() {
     });
 }
 
-let cleanupTick: (() => void) | null = null;
-let cleanupFinished: (() => void) | null = null;
+async function openConfigurePage() {
+  const executionId = Number(route.params.id);
+  if (!isNaN(executionId)) {
+    try {
+      await window.electronAPI.cancelTimer(executionId);
+    } catch (err) {
+      console.error('Failed to cancel current timer before opening configure page:', err);
+    }
+  }
 
-function loadTimer(id: number) {
-  window.electronAPI
-    .getTimer(id)
-    .then((timer) => {
-      if (!timer) {
-        router.push('/');
-        return;
-      }
-      const totalSeconds = timer.hours * 3600 + timer.minutes * 60 + timer.seconds;
-      store.setTitle(timer.title);
-      // finish_at vem em UTC do banco; interpreta como UTC para exibir no horário local
-      store.setFinishTime(new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime());
-      store.setTime(totalSeconds);
-      store.remainingSeconds = totalSeconds;
-    })
-    .catch((err) => {
-      console.error('Failed to load timer:', err);
-      router.push('/');
-    });
+  if (!currentConfig.value) {
+    router.push({ name: 'new-timer-configuration' });
+    return;
+  }
+  router.push({
+    name: 'new-timer-configuration',
+    query: {
+      title: currentConfig.value.title,
+      hours: String(currentConfig.value.hours),
+      minutes: String(currentConfig.value.minutes),
+      seconds: String(currentConfig.value.seconds),
+    },
+  });
 }
 
-onMounted(() => {
+onMounted(async () => {
   const id = Number(route.params.id);
-  loadTimer(id);
-
-  cleanupTick = window.electronAPI.onTick((remainingSeconds) => {
-    store.remainingSeconds = remainingSeconds;
-  });
-
-  cleanupFinished = window.electronAPI.onFinished(() => {
-    store.finish();
-  });
+  const found = await store.initTimer(id);
+  if (!found) {
+    router.push('/');
+  }
 });
 
 // O Vue Router reutiliza o mesmo componente quando apenas o parâmetro :id muda,
 // então onMounted não é disparado novamente. Recarrega ao trocar de id.
 watch(
   () => route.params.id,
-  (newId) => {
-    loadTimer(Number(newId));
+  async (newId) => {
+    const found = await store.initTimer(Number(newId));
+    if (!found) {
+      router.push('/');
+    }
   }
 );
 
 onBeforeUnmount(() => {
-  if (cleanupTick) cleanupTick();
-  if (cleanupFinished) cleanupFinished();
+  store.disposeTimer();
 });
 </script>
 
@@ -89,7 +88,7 @@ onBeforeUnmount(() => {
         <div class="text-caption text-medium-emphasis">Zera às {{ formattedFinishTime }}</div>
       </v-card-text>
 
-      <v-btn color="primary" block class="mb-2" @click="router.push('/')"> Configurar </v-btn>
+      <v-btn color="primary" block class="mb-2" @click="openConfigurePage"> Configurar </v-btn>
 
       <v-btn color="secondary" block @click="restart"> Reiniciar </v-btn>
     </v-card>

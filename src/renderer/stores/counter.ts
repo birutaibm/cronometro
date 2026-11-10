@@ -5,6 +5,15 @@ export const useCounterStore = defineStore('counter', () => {
   const remainingSeconds = ref(0);
   const title = ref('');
   const finishTime = ref(0);
+  const currentConfig = ref<{
+    title: string;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
+
+  let cleanupTick: (() => void) | null = null;
+  let cleanupFinished: (() => void) | null = null;
 
   const formattedTime = computed(() => {
     const hrs = Math.floor(remainingSeconds.value / 3600);
@@ -22,16 +31,44 @@ export const useCounterStore = defineStore('counter', () => {
     });
   });
 
-  function setTime(seconds: number) {
-    remainingSeconds.value = seconds;
+  async function initTimer(id: number): Promise<boolean> {
+    const timer = await window.electronAPI.getTimer(id);
+    if (!timer) {
+      return false;
+    }
+
+    const totalSeconds = timer.hours * 3600 + timer.minutes * 60 + timer.seconds;
+    title.value = timer.title;
+    // finish_at vem em UTC do banco; interpreta como UTC para exibir no horário local
+    finishTime.value = new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime();
+    remainingSeconds.value = totalSeconds;
+    currentConfig.value = {
+      title: timer.title,
+      hours: timer.hours,
+      minutes: timer.minutes,
+      seconds: timer.seconds,
+    };
+
+    cleanupTick = window.electronAPI.onTick((remaining) => {
+      remainingSeconds.value = remaining;
+    });
+
+    cleanupFinished = window.electronAPI.onFinished(() => {
+      finish();
+    });
+
+    return true;
   }
 
-  function setTitle(value: string) {
-    title.value = value;
-  }
-
-  function setFinishTime(value: number) {
-    finishTime.value = value;
+  function disposeTimer() {
+    if (cleanupTick) {
+      cleanupTick();
+      cleanupTick = null;
+    }
+    if (cleanupFinished) {
+      cleanupFinished();
+      cleanupFinished = null;
+    }
   }
 
   function reset() {
@@ -46,12 +83,12 @@ export const useCounterStore = defineStore('counter', () => {
     remainingSeconds,
     title,
     finishTime,
+    currentConfig,
     formattedTime,
     formattedFinishTime,
-    setTime,
-    setTitle,
+    initTimer,
+    disposeTimer,
     reset,
-    setFinishTime,
     finish,
   };
 });

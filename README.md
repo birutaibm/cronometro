@@ -29,10 +29,11 @@ cronometro/
 │   │   ├── env.d.ts                 # Declarações de tipo do Vite
 │   │   ├── electron-api.d.ts        # Tipagem da API Electron exposta ao renderer
 │   │   ├── components/              # Componentes Vue
+│   │   │   ├── TimerConfigurationsList.vue  # Página de listagem de configurações (rota /)
 │   │   │   ├── TimerPage.vue        # Página do cronômetro — exibe o tempo e os botões de controle
-│   │   │   └── TimeInput.vue        # Página de entrada — permite definir horas, minutos, segundos e título
+│   │   │   └── TimeInput.vue        # Página de criação — define título, horas, minutos e segundos
 │   │   ├── router/                  # Configuração de rotas
-│   │   │   └── index.ts             # Definição das rotas (/* e /timer/:id)
+│   │   │   └── index.ts             # Definição das rotas (/，/new_timer_configuration, /timer/:id)
 │   │   └── stores/                  # Pinia stores
 │   │       └── counter.ts           # Store de estado do cronômetro (tempo, execução, título)
 │   └── electron/                    # Processo principal do Electron
@@ -41,9 +42,9 @@ cronometro/
 │       └── alert-preload.ts         # Pré-load para a janela de alerta
 │       └── database/                # Camada de acesso a dados
 │           ├── index.ts             # Inicialização do banco, getRepository e getFileSystem
-│           ├── database-repository.ts  # Classe DatabaseRepository (createTimer, getSessions, getTimerById)
+│           ├── database-repository.ts  # Classe DatabaseRepository (createConfiguration, createExecution, getExecutionById, ...)
 │           ├── file-system.ts       # Classe FileSystem (manipulação de diretórios e backup)
-│           └── migrations/          # Scripts de migração do banco de dados
+│           └── migrations/          # Scripts de migração do banco de dados (001_create_timers_table, 002_split_timers_table)
 ├── tests/                           # Testes
 │   ├── unit/                        # Testes unitários (Jest)
 │   │   ├── __mocks__/               # Mocks para testes
@@ -79,22 +80,30 @@ cronometro/
 
 ### Fluxo da Aplicação
 
-1. O usuário acessa a rota `/` e insere horas, minutos, segundos e um título opcional no componente `TimeInput.vue`.
-2. Ao clicar em "Iniciar", o tempo é convertido para segundos e armazenado na Pinia store `counter`.
-3. O app navega para a rota `/timer/:id`, onde `TimerPage.vue` conecta-se aos métodos IPC via `window.electronAPI`.
-4. O processo principal (`src/electron/main.ts`) recebe o comando `timer:start` via `ipcMain.handle`, instancia a classe `Timer` para gerenciar a contagem regressiva e persiste a sessão no banco de dados SQLite via `DatabaseRepository`.
-5. O pré-load (`src/electron/preload.ts`) expõe a API `window.electronAPI` ao renderer via `contextBridge`, com métodos `startTimer`, `cancelTimer`, `hideMainWindow`, `getSessions`, `getTimer`, `restartTimer`, `onTick`, `onFinished` e `sendAction`.
-6. Quando o timer termina, o processo principal envia `timer:finished` e abre uma janela de alerta com opções de ação.
+1. O usuário acessa a rota `/` e vê a listagem de `timer_configurations` já salvas no componente `TimerConfigurationsList.vue`. Cada item exibe o título, o tempo no formato HH:MM:SS e um botão "Iniciar".
+2. Clicar em "Iniciar" cria uma `timer_execution` com status `RUNNING` baseada naquela configuração e navega para `/timer/:executionId`, onde `TimerPage.vue` exibe o tempo restante.
+3. O botão "+ Nova configuração" navega para `/new_timer_configuration`, onde `TimeInput.vue` permite definir título, horas, minutos e segundos. Ao clicar em "Iniciar", chama um único canal do main (`timer:create-and-start`) que grava a configuração, inicia o timer e cria a execução, retornando o id para navegação.
+4. O processo principal (`src/electron/main.ts`) recebe os comandos via `ipcMain.handle`, instancia a classe `Timer` para gerenciar a contagem regressiva e persiste configuração/execução no banco de dados SQLite via `DatabaseRepository`.
+5. O pré-load (`src/electron/preload.ts`) expõe a API `window.electronAPI` ao renderer via `contextBridge`, com métodos `startTimer`, `createAndStartTimer`, `getConfigurations`, `getTimer`, `cancelTimer`, `restartTimer`, `hideMainWindow`, `getSessions`, `sendAction`, `onTick`, `onFinished`.
+6. Quando o timer termina, o processo principal envia `timer:finished`, marca a execução como `FINISHED` e abre uma janela de alerta com opções de ação.
 7. O `src/electron/alert-preload.ts` expõe `sendAction` para comunicação da janela de alerta de volta ao processo principal.
 
 ### Persistência de Dados
 
-As sessões de timer são salvas em um banco de dados SQLite localizado em `<userData>/database/database.sqlite` (ex: `~/Library/Application Support/cronometro/database/database.sqlite` no macOS). A tabela `timers` armazena:
+As configurações e execuções de timer são salvas em um banco de dados SQLite localizado em `<userData>/database/database.sqlite` (ex: `~/Library/Application Support/cronometro/database/database.sqlite` no macOS). O banco utiliza duas tabelas:
 
+**timer_configurations**
 - `id` (auto-incremento)
 - `title` (string)
 - `hours`, `minutes`, `seconds` (inteiros)
+- `created_at`, `updated_at` (timestamps UTC)
+
+**timer_executions**
+- `id` (auto-incremento)
+- `configuration_id` (FK para `timer_configurations.id`)
 - `finish_at` (timestamp UTC calculado no início)
+- `status` (RUNNING, FINISHED ou CANCELLED)
+- `cancelled_at` (timestamp UTC, preenchido ao cancelar)
 - `created_at`, `updated_at` (timestamps UTC)
 
 O banco utiliza modo WAL (`PRAGMA journal_mode = WAL`) para melhor concorrência. Antes de executar migrações pendentes, um backup automático é criado em `<userData>/database/backup/`. Logs de erro ficam em `<userData>/database/logs/`.
@@ -110,17 +119,19 @@ A lógica do cronômetro no processo principal foi encapsulada na classe `Timer`
 
 ### IPC (Comunicação Inter-Processos)
 
-| Direção         | Canal                | Descrição                                         |
-| --------------- | -------------------- | ------------------------------------------------- |
-| Renderer → Main | `timer:start`        | Inicia o timer e retorna o id criado (invoke)     |
-| Renderer → Main | `timer:cancel`       | Cancela o timer (invoke)                          |
-| Renderer → Main | `timer:get-timer`    | Obtém os dados de um timer pelo id (invoke)       |
-| Renderer → Main | `timer:restart`      | Reinicia um timer existente e retorna o novo id   |
-| Renderer → Main | `timer:get-sessions` | Obtém histórico de sessões (invoke)               |
-| Main → Renderer | `timer:tick`         | Envia segundos restantes (invoke)                 |
-| Main → Renderer | `timer:finished`     | Notifica que o timer acabou                       |
-| Renderer → Main | `main:hide`          | Esconde a janela principal (send)                 |
-| Renderer → Main | `alert:action`       | Ação da janela de alerta (ok, reabrir, finalizar) |
+| Direção         | Canal                    | Descrição                                         |
+| --------------- | ------------------------ | ------------------------------------------------- |
+| Renderer → Main | `timer:start`            | Inicia o timer a partir de uma `configurationId` e retorna o id da execução (invoke) |
+| Renderer → Main | `timer:create-and-start` | Cria a configuração, inicia o timer e cria a execução, retornando o id (invoke) |
+| Renderer → Main | `timer:cancel`           | Cancela a execução pelo id (invoke)               |
+| Renderer → Main | `timer:get-timer`        | Obtém os dados de uma execução (com configuração) pelo id (invoke) |
+| Renderer → Main | `timer:restart`          | Reinicia uma execução existente e retorna o novo id (invoke) |
+| Renderer → Main | `timer:get-configurations`| Lista as configurações de timer (invoke)          |
+| Renderer → Main | `timer:get-sessions`     | Obtém histórico de execuções (invoke)             |
+| Main → Renderer | `timer:tick`             | Envia segundos restantes (send)                   |
+| Main → Renderer | `timer:finished`         | Notifica que o timer acabou (send)                |
+| Renderer → Main | `main:hide`              | Esconde a janela principal (send)                 |
+| Renderer → Main | `alert:action`           | Ação da janela de alerta (ok, reabrir, finalizar) (send) |
 
 ## Pré-requisitos
 
@@ -194,6 +205,7 @@ O aplicativo utiliza as seguintes configurações para compatibilidade com AppIm
 - **loadURL com `file://`** — O processo principal carrega o HTML via `loadURL` com protocolo `file://`, garantindo resolução correta de caminhos dentro do AppImage/ASAR.
 - **app.isPackaged / app.getAppPath()** — Resolução de caminhos adaptada para apps empacotados vs. modo desenvolvimento.
 - **remove-crossorigin.js** — Script de pós-build que remove o atributo `crossorigin` gerado pelo Vite do `index.html`, evitando falhas de carregamento de módulos em URLs `file://`.
+- **start-electron.cjs** — No modo de desenvolvimento, define a variável `ELECTRON_DISABLE_SANDBOX=1` ao iniciar o Electron. Isso é necessário em ambientes containerizados (Docker/CI) onde não há permissão de root para configurar o binário `chrome-sandbox` com modo SUID (4755), impedindo que o app seja abortado pelo sandbox do Chromium.
 
 ## Scripts Disponíveis
 

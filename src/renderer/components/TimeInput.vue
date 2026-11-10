@@ -1,15 +1,33 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useCounterStore } from '../stores/counter';
+import { ref, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 
 const router = useRouter();
-const store = useCounterStore();
+const route = useRoute();
 const hours = ref(0);
 const minutes = ref(25);
 const seconds = ref(0);
 const title = ref('');
 const error = ref<string | null>(null);
+
+function loadQueryValues() {
+  const query = route.query;
+  title.value = query.title ? String(query.title) : '';
+  hours.value = query.hours ? Number(query.hours) : 0;
+  minutes.value = query.minutes ? Number(query.minutes) : 25;
+  seconds.value = query.seconds ? Number(query.seconds) : 0;
+}
+
+onMounted(() => {
+  loadQueryValues();
+});
+
+watch(
+  () => route.query,
+  () => {
+    loadQueryValues();
+  }
+);
 
 async function startCountdown() {
   const totalSeconds = hours.value * 3600 + minutes.value * 60 + seconds.value;
@@ -18,15 +36,13 @@ async function startCountdown() {
     return;
   }
   error.value = null;
-  store.setTime(totalSeconds);
-  store.setTitle(title.value);
   try {
-    const { id } = await window.electronAPI.startTimer(
-      hours.value,
-      minutes.value,
-      seconds.value,
-      title.value
-    );
+    const { id } = await window.electronAPI.createAndStartTimer({
+      title: title.value,
+      hours: hours.value,
+      minutes: minutes.value,
+      seconds: seconds.value,
+    });
     router.push(`/timer/${id}`);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';
