@@ -205,6 +205,7 @@ O aplicativo utiliza as seguintes configurações para compatibilidade com AppIm
 - **loadURL com `file://`** — O processo principal carrega o HTML via `loadURL` com protocolo `file://`, garantindo resolução correta de caminhos dentro do AppImage/ASAR.
 - **app.isPackaged / app.getAppPath()** — Resolução de caminhos adaptada para apps empacotados vs. modo desenvolvimento.
 - **remove-crossorigin.js** — Script de pós-build que remove o atributo `crossorigin` gerado pelo Vite do `index.html`, evitando falhas de carregamento de módulos em URLs `file://`.
+- **start-electron.cjs** — No modo de desenvolvimento, define a variável `ELECTRON_DISABLE_SANDBOX=1` ao iniciar o Electron. Isso é necessário em ambientes containerizados (Docker/CI) onde não há permissão de root para configurar o binário `chrome-sandbox` com modo SUID (4755), impedindo que o app seja abortado pelo sandbox do Chromium.
 
 ## Scripts Disponíveis
 
