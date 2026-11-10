@@ -139,8 +139,8 @@ test('formattedTime formats seconds as HH:MM:SS after initTimer', async () => {
   expect(store.formattedTime).toBe('01:01:01');
 });
 
-test('formattedFinishTime formats finish time after initTimer', async () => {
+test('formattedFinishTime matches HH:MM:SS after initTimer', async () => {
   const store = useCounterStore();
   await store.initTimer(1);
-  expect(store.formattedFinishTime).not.toBe('');
+  expect(store.formattedFinishTime).toMatch(/^\d{2}:\d{2}:\d{2}$/);
 });
