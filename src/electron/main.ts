@@ -18,6 +18,20 @@ function makeOnFinishedCallback(executionId: number) {
   };
 }
 
+function getAlertActions(): string[] {
+  const hasMainWindow = mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+  if (hasMainWindow) {
+    return ['ok'];
+  }
+
+  const hasOtherActiveTimers = [...activeTimers.values()].some((entry) => !entry.timer.isStopped());
+  if (hasOtherActiveTimers) {
+    return ['ok', 'reabrir'];
+  }
+
+  return ['reabrir', 'finalizar'];
+}
+
 function getHtmlPath() {
   const htmlPath = app.isPackaged
     ? path.join(app.getAppPath(), 'dist', 'index.html')
@@ -159,10 +173,8 @@ ipcMain.handle('timer:start', async (_, configurationId: number) => {
     {
       getMainWindow: () => mainWindow,
       alert: (title: string) => {
-        const hasMainWindow =
-          mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
         const encodedTitle = encodeURIComponent(title || '');
-        createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+        createAlertWindow(getAlertActions(), encodedTitle);
       },
     },
     id,
@@ -197,10 +209,8 @@ ipcMain.handle(
       {
         getMainWindow: () => mainWindow,
         alert: (title: string) => {
-          const hasMainWindow =
-            mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
           const encodedTitle = encodeURIComponent(title || '');
-          createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+          createAlertWindow(getAlertActions(), encodedTitle);
         },
       },
       id,
@@ -247,10 +257,8 @@ ipcMain.handle('timer:restart', async (_, id: number) => {
     {
       getMainWindow: () => mainWindow,
       alert: (title: string) => {
-        const hasMainWindow =
-          mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
         const encodedTitle = encodeURIComponent(title || '');
-        createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+        createAlertWindow(getAlertActions(), encodedTitle);
       },
     },
     newId,
