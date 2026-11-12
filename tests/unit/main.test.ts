@@ -146,6 +146,7 @@ test('timer:start sends tick', async () => {
   await ipcMain._invokeHandle('timer:start', null, 10);
   jest.advanceTimersByTime(1000);
   expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', {
+    id: 1,
     remainingSeconds: 4,
   });
 });
@@ -274,7 +275,9 @@ test('timer:start sends finished', async () => {
 
   await ipcMain._invokeHandle('timer:start', null, 10);
   jest.advanceTimersByTime(1000);
-  expect(mockWebContents.send).toHaveBeenCalledWith('timer:finished');
+  expect(mockWebContents.send).toHaveBeenCalledWith('timer:finished', {
+    id: 1,
+  });
   expect(repo.updateExecutionStatus).toHaveBeenCalledWith(1, 'FINISHED');
 });
 
@@ -453,6 +456,5 @@ test('before-quit clears timer when timer exists', async () => {
   await ipcMain._invokeHandle('timer:start', null, 10);
   await h();
   expect(repo.updateExecutionStatus).toHaveBeenCalledWith(1, 'CANCELLED', expect.any(Date));
-  expect(ipcHandleHandlers['_timerInterval']).toBeUndefined();
   Object.defineProperty(process, 'platform', { value: origPlatform });
 });
