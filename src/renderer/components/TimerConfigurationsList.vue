@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useCounterStore } from '../stores/counter';
 
 const router = useRouter();
+const store = useCounterStore();
 
 interface TimerConfiguration {
   id: number;
@@ -38,7 +40,8 @@ async function loadConfigurations() {
 async function startTimer(configurationId: number) {
   try {
     const { id } = await window.electronAPI.startTimer(configurationId);
-    router.push(`/timer/${id}`);
+    await store.initTimer(id);
+    router.push('/timer');
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';
     console.error('Failed to start timer:', err);

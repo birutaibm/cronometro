@@ -16,19 +16,19 @@ type Timer = {
 };
 
 function mockElectronAPI(timer: Timer | null) {
-  const tickCallbacks = new Array<(remainingSeconds: number) => void>();
-  const finishedCallbacks = new Array<() => void>();
+  const tickCallbacks = new Array<(id: number, remainingSeconds: number) => void>();
+  const finishedCallbacks = new Array<(id: number) => void>();
 
   const electronAPI = {
     getTimer: jest.fn().mockResolvedValue(timer),
-    onTick: jest.fn((callback: (remainingSeconds: number) => void) => {
+    onTick: jest.fn((callback: (id: number, remainingSeconds: number) => void) => {
       tickCallbacks.push(callback);
       return () => {
         const idx = tickCallbacks.indexOf(callback);
         if (idx >= 0) tickCallbacks.splice(idx, 1);
       };
     }),
-    onFinished: jest.fn((callback: () => void) => {
+    onFinished: jest.fn((callback: (id: number) => void) => {
       finishedCallbacks.push(callback);
       return () => {
         const idx = finishedCallbacks.indexOf(callback);
@@ -42,11 +42,11 @@ function mockElectronAPI(timer: Timer | null) {
   return {
     tickCallbacks,
     finishedCallbacks,
-    fireTick: (remainingSeconds: number) => {
-      tickCallbacks.forEach((cb) => cb(remainingSeconds));
+    fireTick: (id: number, remainingSeconds: number) => {
+      tickCallbacks.forEach((cb) => cb(id, remainingSeconds));
     },
-    fireFinished: () => {
-      finishedCallbacks.forEach((cb) => cb());
+    fireFinished: (id: number) => {
+      finishedCallbacks.forEach((cb) => cb(id));
     },
   };
 }
@@ -82,14 +82,16 @@ test('initTimer populates store from electronAPI', async () => {
   const found = await store.initTimer(1);
 
   expect(found).toBe(true);
-  expect(store.title).toBe('Meu Cronômetro');
-  expect(store.currentConfig).toEqual({
+  const state = store.getTimerState(1);
+  expect(state?.title).toBe('Meu Cronômetro');
+  expect(state?.currentConfig).toEqual({
     title: 'Meu Cronômetro',
     hours: 1,
     minutes: 1,
     seconds: 1,
   });
-  expect(store.remainingSeconds).toBe(3661);
+  expect(state?.remainingSeconds).toBe(3661);
+  expect(state?.status).toBe('RUNNING');
 });
 
 test('initTimer returns false when timer not found', async () => {
@@ -99,48 +101,58 @@ test('initTimer returns false when timer not found', async () => {
   const found = await store.initTimer(999);
 
   expect(found).toBe(false);
-  expect(store.title).toBe('');
-  expect(store.currentConfig).toBeNull();
+  expect(store.getTimerState(999)).toBeUndefined();
 
   // Restaura o mock padrão para os próximos testes
   currentMock = mockElectronAPI(mockTimer);
 });
 
-test('reset sets remainingSeconds to 0', async () => {
+test('onFinished callback sets timer to FINISHED and zeroes remainingSeconds', async () => {
   const store = useCounterStore();
   await store.initTimer(1);
-  expect(store.remainingSeconds).toBe(3661);
+  expect(store.getTimerState(1)?.remainingSeconds).toBe(3661);
 
-  store.reset();
-  expect(store.remainingSeconds).toBe(0);
-});
-
-test('finish sets remainingSeconds to 0', async () => {
-  const store = useCounterStore();
-  await store.initTimer(1);
-  expect(store.remainingSeconds).toBe(3661);
-
-  store.finish();
-  expect(store.remainingSeconds).toBe(0);
-});
-
-test('onFinished callback triggers finish()', async () => {
-  const store = useCounterStore();
-  await store.initTimer(1);
-  expect(store.remainingSeconds).toBe(3661);
-
-  currentMock!.fireFinished();
-  expect(store.remainingSeconds).toBe(0);
+  currentMock!.fireFinished(1);
+  const state = store.getTimerState(1);
+  expect(state?.remainingSeconds).toBe(0);
+  expect(state?.status).toBe('FINISHED');
 });
 
 test('formattedTime formats seconds as HH:MM:SS after initTimer', async () => {
   const store = useCounterStore();
   await store.initTimer(1);
-  expect(store.formattedTime).toBe('01:01:01');
+  expect(store.formattedTime(1)).toBe('01:01:01');
 });
 
 test('formattedFinishTime matches HH:MM:SS after initTimer', async () => {
   const store = useCounterStore();
   await store.initTimer(1);
-  expect(store.formattedFinishTime).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+  expect(store.formattedFinishTime(1)).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+});
+
+test('tick updates remainingSeconds for the correct timer id', async () => {
+  const store = useCounterStore();
+  await store.initTimer(1);
+
+  currentMock!.fireTick(1, 100);
+  expect(store.getTimerState(1)?.remainingSeconds).toBe(100);
+});
+
+test('disposeTimer removes a specific timer from the map', async () => {
+  const store = useCounterStore();
+  await store.initTimer(1);
+  expect(store.getTimerState(1)).toBeDefined();
+
+  store.disposeTimer(1);
+  expect(store.getTimerState(1)).toBeUndefined();
+});
+
+test('disposeAll clears all timers', async () => {
+  const store = useCounterStore();
+  await store.initTimer(1);
+  expect(store.getTimerState(1)).toBeDefined();
+
+  store.disposeAll();
+  expect(store.getTimerState(1)).toBeUndefined();
+  expect(store.timers.size).toBe(0);
 });

@@ -42,8 +42,8 @@ interface ElectronAPI {
   restartTimer: (id: number) => Promise<{ id: number }>;
   hideMainWindow: () => Promise<void>;
   getSessions: () => Promise<Timer[]>;
-  onTick: (callback: (remainingSeconds: number) => void) => () => void;
-  onFinished: (callback: () => void) => () => void;
+  onTick: (callback: (id: number, remainingSeconds: number) => void) => () => void;
+  onFinished: (callback: (id: number) => void) => () => void;
   sendAction: (action: string) => Promise<void>;
 }
 

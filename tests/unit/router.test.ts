@@ -23,7 +23,7 @@ describe('src/router/index.ts', () => {
     expect(callArgs.routes[1].path).toBe('/new_timer_configuration');
     expect(callArgs.routes[1].name).toBe('new-timer-configuration');
     expect(callArgs.routes[1].component).toBeDefined();
-    expect(callArgs.routes[2].path).toBe('/timer/:id');
+    expect(callArgs.routes[2].path).toBe('/timer');
     expect(callArgs.routes[2].name).toBe('timer');
     expect(callArgs.routes[2].component).toBeDefined();
     expect(createWebHashHistory).toHaveBeenCalled();

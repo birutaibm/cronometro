@@ -107,20 +107,23 @@ test.describe('Electron Timer Process Lifecycle', () => {
     const pid = electronApp.process().pid;
     expect(isProcessAlive(pid)).toBe(true);
 
-    const { id } = await page.evaluate(async (seconds: number) => {
-      const result = await (window as any).electronAPI.createAndStartTimer({
-        title: 'Test',
-        hours: 0,
-        minutes: 0,
-        seconds,
-      });
-      return result;
-    }, 2);
-
-    await page.evaluate((timerId: number) => {
-      (window as any).__router?.push(`/timer/${timerId}`);
-    }, id);
+    // Navega para a página de criação de timer via UI
+    await page.evaluate(() => {
+      (window as any).__router?.push('/new_timer_configuration');
+    });
     await sleep(500);
+
+    // Preenche o formulário e inicia um timer de 5 segundos
+    await page.getByLabel('Minutos').fill('0');
+    await page.getByLabel('Segundos').fill('5');
+    await page.getByRole('button', { name: 'Iniciar' }).click();
+    await sleep(500);
+
+    // Deve navegar para /timer e mostrar o card do timer
+    await expect(page).toHaveURL(/timer/);
+
+    // Espera o timer de 5 segundos chegar a zero
+    await sleep(6000);
 
     await expect(page.locator('.time-label')).toHaveText('00:00:00', {
       timeout: 8000,

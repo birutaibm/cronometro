@@ -15,6 +15,7 @@ export class Timer {
 
   constructor(
     private readonly system: System,
+    private readonly executionId: number,
     onFinishedCallback?: () => void | Promise<void>
   ) {
     this.onFinishedCallback = onFinishedCallback ?? null;
@@ -32,11 +33,14 @@ export class Timer {
       const elapsed = Date.now() - this.timerStartTime;
       this.remainingSeconds = Math.max(0, this.totalTime - Math.floor(elapsed / 1000));
       this.system.getMainWindow()?.webContents.send('timer:tick', {
+        id: this.executionId,
         remainingSeconds: this.remainingSeconds,
       });
       if (this.remainingSeconds <= 0) {
         this.clear();
-        this.system.getMainWindow()?.webContents.send('timer:finished');
+        this.system.getMainWindow()?.webContents.send('timer:finished', {
+          id: this.executionId,
+        });
         this.system.alert(title);
         try {
           await this.onFinishedCallback?.();

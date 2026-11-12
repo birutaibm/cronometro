@@ -5,25 +5,18 @@ import { Timer } from './timer';
 
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
-let currentExecutionId: number | null = null;
+const activeTimers = new Map<number, { timer: Timer; executionId: number; title: string }>();
 
-const timer = new Timer(
-  {
-    getMainWindow: () => mainWindow,
-    alert: (title: string) => {
-      const hasMainWindow =
-        mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
-      const encodedTitle = encodeURIComponent(title || '');
-      createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
-    },
-  },
-  async () => {
-    if (currentExecutionId != null) {
-      const repo = getRepository();
-      await repo.updateExecutionStatus(currentExecutionId, 'FINISHED');
-    }
-  }
-);
+function makeOnFinishedCallback(executionId: number) {
+  return async () => {
+    const entry = activeTimers.get(executionId);
+    if (!entry) return;
+
+    const repo = getRepository();
+    await repo.updateExecutionStatus(executionId, 'FINISHED');
+    activeTimers.delete(executionId);
+  };
+}
 
 function getHtmlPath() {
   const htmlPath = app.isPackaged
@@ -54,7 +47,8 @@ function createWindow() {
 
   mainWindow.on('close', (event) => {
     if (process.platform !== 'darwin') {
-      if (!timer.isStopped()) {
+      const hasRunningTimer = [...activeTimers.values()].some((entry) => !entry.timer.isStopped());
+      if (hasRunningTimer) {
         event.preventDefault();
         if (mainWindow) mainWindow.hide();
       }
@@ -67,6 +61,11 @@ function createWindow() {
 }
 
 function createAlertWindow(actions: string[], title: string = '') {
+  // Fecha qualquer alerta existente antes de abrir um novo (uma janela por vez)
+  if (alertWindow && !alertWindow.isDestroyed()) {
+    alertWindow.close();
+  }
+
   alertWindow = new BrowserWindow({
     width: 360,
     height: 220,
@@ -100,8 +99,7 @@ function recreateMainWindow() {
   createWindow();
   const mw = mainWindow!;
   mw.webContents.on('did-finish-load', () => {
-    const target = currentExecutionId != null ? `/timer/${currentExecutionId}` : '/';
-    mw.webContents.executeJavaScript(`window.__router?.push('${target}')`);
+    mw.webContents.executeJavaScript(`window.__router?.push('/')`);
   });
 }
 
@@ -131,12 +129,13 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', async () => {
-  if (currentExecutionId != null) {
-    const repo = getRepository();
-    await repo.updateExecutionStatus(currentExecutionId, 'CANCELLED', new Date());
-    currentExecutionId = null;
+  const repo = getRepository();
+  for (const [executionId, entry] of activeTimers) {
+    if (entry.timer.isStopped()) continue;
+    await repo.updateExecutionStatus(executionId, 'CANCELLED', new Date());
+    entry.timer.cancel();
   }
-  timer.cancel();
+  activeTimers.clear();
 });
 
 ipcMain.handle('timer:start', async (_, configurationId: number) => {
@@ -155,9 +154,23 @@ ipcMain.handle('timer:start', async (_, configurationId: number) => {
     finishAt: new Date(finishAt),
     status: 'RUNNING',
   });
-  currentExecutionId = id;
 
+  const timer = new Timer(
+    {
+      getMainWindow: () => mainWindow,
+      alert: (title: string) => {
+        const hasMainWindow =
+          mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+        const encodedTitle = encodeURIComponent(title || '');
+        createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+      },
+    },
+    id,
+    makeOnFinishedCallback(id)
+  );
   timer.start(config.hours, config.minutes, config.seconds, config.title);
+
+  activeTimers.set(id, { timer, executionId: id, title: config.title });
   return { id };
 });
 
@@ -179,9 +192,23 @@ ipcMain.handle(
       finishAt: new Date(finishAt),
       status: 'RUNNING',
     });
-    currentExecutionId = id;
 
+    const timer = new Timer(
+      {
+        getMainWindow: () => mainWindow,
+        alert: (title: string) => {
+          const hasMainWindow =
+            mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+          const encodedTitle = encodeURIComponent(title || '');
+          createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+        },
+      },
+      id,
+      makeOnFinishedCallback(id)
+    );
     timer.start(hours, minutes, seconds, title);
+
+    activeTimers.set(id, { timer, executionId: id, title });
     return { id };
   }
 );
@@ -199,6 +226,11 @@ ipcMain.handle('timer:restart', async (_, id: number) => {
 
   // Cancela a execução RUNNING existente antes de criar a nova
   if (existing.status === 'RUNNING') {
+    const entry = activeTimers.get(existing.id);
+    if (entry) {
+      entry.timer.cancel();
+      activeTimers.delete(existing.id);
+    }
     await repo.updateExecutionStatus(existing.id, 'CANCELLED', new Date());
   }
 
@@ -210,19 +242,34 @@ ipcMain.handle('timer:restart', async (_, id: number) => {
     finishAt: new Date(finishAt),
     status: 'RUNNING',
   });
-  currentExecutionId = newId;
 
+  const timer = new Timer(
+    {
+      getMainWindow: () => mainWindow,
+      alert: (title: string) => {
+        const hasMainWindow =
+          mainWindow != null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+        const encodedTitle = encodeURIComponent(title || '');
+        createAlertWindow(hasMainWindow ? ['ok'] : ['reabrir', 'finalizar'], encodedTitle);
+      },
+    },
+    newId,
+    makeOnFinishedCallback(newId)
+  );
   timer.start(existing.hours, existing.minutes, existing.seconds, existing.title);
+
+  activeTimers.set(newId, { timer, executionId: newId, title: existing.title });
   return { id: newId };
 });
 
 ipcMain.handle('timer:cancel', async (_, id: number) => {
-  timer.cancel();
+  const entry = activeTimers.get(id);
+  if (entry) {
+    entry.timer.cancel();
+    activeTimers.delete(id);
+  }
   const repo = getRepository();
   await repo.updateExecutionStatus(id, 'CANCELLED', new Date());
-  if (currentExecutionId === id) {
-    currentExecutionId = null;
-  }
 });
 
 ipcMain.handle('timer:get-configurations', async () => {
