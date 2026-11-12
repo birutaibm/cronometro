@@ -2,10 +2,12 @@
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
+import TimerCard from './TimerCard.vue';
 
 const router = useRouter();
 const route = useRoute();
 const store = useCounterStore();
+
 const title = computed(() => store.title);
 const formattedTime = computed(() => store.formattedTime);
 const formattedFinishTime = computed(() => store.formattedFinishTime);
@@ -49,6 +51,12 @@ async function openConfigurePage() {
   });
 }
 
+function cancelTimer() {
+  const id = Number(route.params.id);
+  window.electronAPI.cancelTimer(id).catch((err) => console.error('Failed to cancel timer:', err));
+  store.disposeTimer();
+}
+
 onMounted(async () => {
   const id = Number(route.params.id);
   const found = await store.initTimer(id);
@@ -80,18 +88,15 @@ onBeforeUnmount(() => {
     class="d-flex align-center justify-center"
     style="min-height: 100vh; background: #f0f2f5"
   >
-    <v-card max-width="360" width="100%" class="pa-6" elevation="4">
-      <v-card-title class="text-h5 text-center mb-2">{{ title || 'Cronômetro' }}</v-card-title>
-
-      <v-card-text class="text-center">
-        <div class="time-label text-h2 font-weight-light mb-2">{{ formattedTime }}</div>
-        <div class="text-caption text-medium-emphasis">Zera às {{ formattedFinishTime }}</div>
-      </v-card-text>
-
-      <v-btn color="primary" block class="mb-2" @click="openConfigurePage"> Configurar </v-btn>
-
-      <v-btn color="secondary" block @click="restart"> Reiniciar </v-btn>
-    </v-card>
+    <TimerCard
+      :title="title || 'Cronômetro'"
+      :time="formattedTime"
+      :finish-time="formattedFinishTime"
+      status="RUNNING"
+      :on-configure="openConfigurePage"
+      :on-restart="restart"
+      :on-cancel="cancelTimer"
+    />
   </v-container>
 </template>
 
