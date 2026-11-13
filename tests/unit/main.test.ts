@@ -281,6 +281,67 @@ test('timer:start sends finished', async () => {
   expect(repo.updateExecutionStatus).toHaveBeenCalledWith(1, 'FINISHED');
 });
 
+test('timer:start two timers send independent ticks', async () => {
+  const db = require('../../src/electron/database/index');
+  const repo = db.getRepository();
+  repo.getConfigurationById.mockResolvedValue({
+    id: 10,
+    title: 'Teste',
+    hours: 0,
+    minutes: 0,
+    seconds: 5,
+    created_at: '2026-11-08 13:00:00',
+    updated_at: '2026-11-08 13:00:00',
+  });
+  repo.createExecution.mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce({ id: 2 });
+
+  await ipcMain._invokeHandle('timer:start', null, 10);
+  await ipcMain._invokeHandle('timer:start', null, 10);
+  jest.advanceTimersByTime(1000);
+
+  expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', {
+    id: 1,
+    remainingSeconds: 4,
+  });
+  expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', {
+    id: 2,
+    remainingSeconds: 4,
+  });
+});
+
+test('timer:cancel one timer does not affect the other', async () => {
+  const db = require('../../src/electron/database/index');
+  const repo = db.getRepository();
+  repo.getConfigurationById.mockResolvedValue({
+    id: 10,
+    title: 'Teste',
+    hours: 0,
+    minutes: 0,
+    seconds: 5,
+    created_at: '2026-11-08 13:00:00',
+    updated_at: '2026-11-08 13:00:00',
+  });
+  repo.createExecution.mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce({ id: 2 });
+
+  await ipcMain._invokeHandle('timer:start', null, 10);
+  await ipcMain._invokeHandle('timer:start', null, 10);
+
+  await ipcMain._invokeHandle('timer:cancel', null, 1);
+  jest.advanceTimersByTime(1000);
+
+  // Timer 1 cancelado não deve enviar mais ticks
+  const tickCalls = mockWebContents.send.mock.calls.filter(
+    (c: any) => c[0] === 'timer:tick' && c[1].id === 1
+  );
+  expect(tickCalls.length).toBe(0);
+
+  // Timer 2 ainda deve estar enviando ticks
+  expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', {
+    id: 2,
+    remainingSeconds: 4,
+  });
+});
+
 test('startTimer clears interval on second start', async () => {
   const db = require('../../src/electron/database/index');
   const repo = db.getRepository();

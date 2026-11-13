@@ -146,13 +146,3 @@ test('disposeTimer removes a specific timer from the map', async () => {
   store.disposeTimer(1);
   expect(store.getTimerState(1)).toBeUndefined();
 });
-
-test('disposeAll clears all timers', async () => {
-  const store = useCounterStore();
-  await store.initTimer(1);
-  expect(store.getTimerState(1)).toBeDefined();
-
-  store.disposeAll();
-  expect(store.getTimerState(1)).toBeUndefined();
-  expect(store.timers.size).toBe(0);
-});

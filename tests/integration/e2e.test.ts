@@ -144,6 +144,69 @@ test.describe('Electron Timer Process Lifecycle', () => {
     await electronApp.close();
   });
 
+  test('dois timers simultâneos aparecem em /timer e contam independentemente', async () => {
+    const pid = electronApp.process().pid;
+    expect(isProcessAlive(pid)).toBe(true);
+
+    // Inicia o primeiro timer (Timer A, 6 segundos)
+    await page.evaluate(() => {
+      (window as any).__router?.push('/new_timer_configuration');
+    });
+    await sleep(300);
+    await page.getByLabel('Título').fill('Timer A');
+    await page.getByLabel('Minutos').fill('0');
+    await page.getByLabel('Segundos').fill('6');
+    await page.getByRole('button', { name: 'Iniciar' }).click();
+    await sleep(300);
+    await expect(page).toHaveURL(/timer/);
+
+    // Inicia o segundo timer (Timer B, 2 segundos)
+    await page.getByRole('button', { name: '+ Novo timer' }).click();
+    await sleep(300);
+    await page.getByLabel('Título').fill('Timer B');
+    await page.getByLabel('Minutos').fill('0');
+    await page.getByLabel('Segundos').fill('2');
+    await page.getByRole('button', { name: 'Iniciar' }).click();
+    await sleep(300);
+    await expect(page).toHaveURL(/timer/);
+
+    // Ambos os cards devem estar visíveis na página /timer
+    await expect(page.getByText('Timer A')).toBeVisible();
+    await expect(page.getByText('Timer B')).toBeVisible();
+
+    // Timer B (2s) deve zerar antes do Timer A (6s).
+    // Os cards são renderizados por ordem de inserção no Map: A (índice 0), B (índice 1).
+    await sleep(2500);
+
+    const timeLabels = page.locator('.time-label');
+    await expect(timeLabels).toHaveCount(2);
+    await expect(timeLabels.nth(1)).toHaveText('00:00:00', {
+      timeout: 8000,
+    });
+
+    // Timer A ainda deve estar rodando (tempo > 0)
+    await expect(timeLabels.nth(0)).not.toHaveText('00:00:00');
+
+    // Aguarda Timer A zerar também
+    await sleep(2000);
+    await expect(timeLabels.nth(0)).toHaveText('00:00:00', {
+      timeout: 8000,
+    });
+
+    // Fecha quaisquer janelas de alerta deixadas pelos timers finalizados
+    const windows = electronApp.windows();
+    const alertWindow = windows.find((w: any) => w !== page);
+    if (alertWindow) {
+      await alertWindow.evaluate(() => {
+        const btn = document.querySelector('.btn-ok') as HTMLElement;
+        if (btn) btn.click();
+      });
+      await sleep(500);
+    }
+
+    await electronApp.close();
+  });
+
   test('process exits when no timer is active and app is closed', async () => {
     const pid = electronApp.process().pid;
     expect(isProcessAlive(pid)).toBe(true);

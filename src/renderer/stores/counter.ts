@@ -108,11 +108,6 @@ export const useCounterStore = defineStore('counter', () => {
     }
   }
 
-  function disposeAll() {
-    timers.value.clear();
-    removeListeners();
-  }
-
   return {
     timers,
     formattedTime,
@@ -120,6 +115,5 @@ export const useCounterStore = defineStore('counter', () => {
     getTimerState,
     initTimer,
     disposeTimer,
-    disposeAll,
   };
 });
