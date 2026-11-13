@@ -5,6 +5,7 @@ import { Timer } from './timer';
 
 let mainWindow: BrowserWindow | null = null;
 let alertWindow: BrowserWindow | null = null;
+const alertQueue: Array<{ actions: string[]; title: string }> = [];
 const activeTimers = new Map<number, { timer: Timer; executionId: number; title: string }>();
 
 function makeOnFinishedCallback(executionId: number) {
@@ -75,11 +76,16 @@ function createWindow() {
 }
 
 function createAlertWindow(actions: string[], title: string = '') {
-  // Fecha qualquer alerta existente antes de abrir um novo (uma janela por vez)
+  // Se já houver um alerta visível, enfileira este para ser exibido em seguida
   if (alertWindow && !alertWindow.isDestroyed()) {
-    alertWindow.close();
+    alertQueue.push({ actions, title });
+    return;
   }
 
+  showAlertWindow(actions, title);
+}
+
+function showAlertWindow(actions: string[], title: string = '') {
   alertWindow = new BrowserWindow({
     width: 360,
     height: 220,
@@ -102,6 +108,11 @@ function createAlertWindow(actions: string[], title: string = '') {
 
   alertWindow.on('closed', () => {
     alertWindow = null;
+    // Ao fechar o alerta atual, exibe o próximo enfileirado, se houver
+    const next = alertQueue.shift();
+    if (next) {
+      showAlertWindow(next.actions, next.title);
+    }
   });
 }
 

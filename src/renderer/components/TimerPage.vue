@@ -46,9 +46,13 @@ async function openConfigurePage(id: number) {
   });
 }
 
-function cancelTimer(id: number) {
-  store.disposeTimer(id);
-  window.electronAPI.cancelTimer(id).catch((err) => console.error('Failed to cancel timer:', err));
+async function cancelTimer(id: number) {
+  try {
+    await window.electronAPI.cancelTimer(id);
+    store.disposeTimer(id);
+  } catch (err) {
+    console.error('Failed to cancel timer:', err);
+  }
 }
 </script>
 
