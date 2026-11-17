@@ -121,7 +121,7 @@ describe('electron/preload.ts', () => {
     });
   });
 
-  test('onTick registers handler and passes only remainingSeconds', () => {
+  test('onTick registers handler and passes id and remainingSeconds', () => {
     const exposed = mockContextBridge.exposeInMainWorld.mock.calls[0][1];
     const callback = jest.fn();
     exposed.onTick(callback);
@@ -129,11 +129,11 @@ describe('electron/preload.ts', () => {
     const tickCall = onCallArgs.find((c: any) => c[0] === 'timer:tick');
     expect(tickCall).toBeDefined();
     const tickHandler = tickCall![1];
-    tickHandler(null, { remainingSeconds: 42 });
-    expect(callback).toHaveBeenCalledWith(42);
+    tickHandler(null, { id: 7, remainingSeconds: 42 });
+    expect(callback).toHaveBeenCalledWith(7, 42);
   });
 
-  test('onFinished invokes callback', () => {
+  test('onFinished invokes callback with id', () => {
     const exposed = mockContextBridge.exposeInMainWorld.mock.calls[0][1];
     const callback = jest.fn();
     exposed.onFinished(callback);
@@ -141,7 +141,7 @@ describe('electron/preload.ts', () => {
     const finishedCall = onCallArgs.find((c: any) => c[0] === 'timer:finished');
     expect(finishedCall).toBeDefined();
     const finishedHandler = finishedCall![1];
-    finishedHandler();
-    expect(callback).toHaveBeenCalled();
+    finishedHandler(null, { id: 3 });
+    expect(callback).toHaveBeenCalledWith(3);
   });
 });

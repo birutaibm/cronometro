@@ -107,6 +107,7 @@ test('timer:start sends tick', async () => {
   await ipcMain._invokeHandle('timer:start', null, 10);
   jest.advanceTimersByTime(1000);
   expect(mockWebContents.send).toHaveBeenCalledWith('timer:tick', {
+    id: 1,
     remainingSeconds: 4,
   });
 });
@@ -127,7 +128,9 @@ test('timer:start sends finished when time expires', async () => {
 
   await ipcMain._invokeHandle('timer:start', null, 10);
   jest.advanceTimersByTime(1000);
-  expect(mockWebContents.send).toHaveBeenCalledWith('timer:finished');
+  expect(mockWebContents.send).toHaveBeenCalledWith('timer:finished', {
+    id: 1,
+  });
 });
 
 test('timer:cancel clears interval', async () => {

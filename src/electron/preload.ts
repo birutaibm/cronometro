@@ -18,14 +18,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   hideMainWindow: () => ipcRenderer.send('main:hide'),
   getSessions: () => ipcRenderer.invoke('timer:get-sessions'),
   sendAction: (action: string) => ipcRenderer.send('alert:action', action),
-  onTick: (callback: (remainingSeconds: number) => void) => {
-    const handler = (_: unknown, data: { remainingSeconds: number }) =>
-      callback(data.remainingSeconds);
+  onTick: (callback: (id: number, remainingSeconds: number) => void) => {
+    const handler = (_: unknown, data: { id: number; remainingSeconds: number }) =>
+      callback(data.id, data.remainingSeconds);
     ipcRenderer.on('timer:tick', handler);
     return () => ipcRenderer.removeListener('timer:tick', handler);
   },
-  onFinished: (callback: () => void) => {
-    const handler = () => callback();
+  onFinished: (callback: (id: number) => void) => {
+    const handler = (_: unknown, data: { id: number }) => callback(data.id);
     ipcRenderer.on('timer:finished', handler);
     return () => ipcRenderer.removeListener('timer:finished', handler);
   },

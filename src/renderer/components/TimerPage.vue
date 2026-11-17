@@ -1,76 +1,104 @@
 <script setup lang="ts">
-import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
+import TimerCard from './TimerCard.vue';
 
 const router = useRouter();
-const route = useRoute();
 const store = useCounterStore();
-const title = computed(() => store.title);
-const formattedTime = computed(() => store.formattedTime);
-const formattedFinishTime = computed(() => store.formattedFinishTime);
-const currentConfig = computed(() => store.currentConfig);
 
-function restart() {
-  store.reset();
-  const id = Number(route.params.id);
+interface TimerConfiguration {
+  id: number;
+  title: string;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+const configurations = ref<TimerConfiguration[]>([]);
+const selectedConfigurationId = ref<number | null>(null);
+const configurationsError = ref<string | null>(null);
+const loadingConfigurations = ref(false);
+
+async function loadConfigurations() {
+  loadingConfigurations.value = true;
+  try {
+    configurations.value = await window.electronAPI.getConfigurations();
+  } catch (err) {
+    configurationsError.value =
+      err instanceof Error ? err.message : 'Erro ao carregar configurações';
+    console.error('Failed to load configurations:', err);
+  } finally {
+    loadingConfigurations.value = false;
+  }
+}
+
+async function startFromConfiguration() {
+  const configurationId = selectedConfigurationId.value;
+  if (!configurationId) return;
+
+  try {
+    const { id } = await window.electronAPI.startTimer(configurationId);
+    await store.initTimer(id);
+    selectedConfigurationId.value = null;
+    configurationsError.value = null;
+  } catch (err) {
+    configurationsError.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';
+    console.error('Failed to start timer from configuration:', err);
+  }
+}
+
+function restart(id: number) {
+  const state = store.getTimerState(id);
+  if (!state?.currentConfig) return;
+
   window.electronAPI
     .restartTimer(id)
     .then(({ id: newId }) => {
-      router.push(`/timer/${newId}`);
+      store.disposeTimer(id);
+      store.initTimer(newId);
     })
     .catch((err) => {
       console.error('Failed to restart timer:', err);
     });
 }
 
-async function openConfigurePage() {
-  const executionId = Number(route.params.id);
-  if (!isNaN(executionId)) {
-    try {
-      await window.electronAPI.cancelTimer(executionId);
-    } catch (err) {
-      console.error('Failed to cancel current timer before opening configure page:', err);
-    }
-  }
-
-  if (!currentConfig.value) {
+async function openConfigurePage(id: number) {
+  const state = store.getTimerState(id);
+  if (!state?.currentConfig) {
     router.push({ name: 'new-timer-configuration' });
     return;
   }
+
+  try {
+    await window.electronAPI.cancelTimer(id);
+  } catch (err) {
+    console.error('Failed to cancel timer before opening configure page:', err);
+  }
+
+  store.disposeTimer(id);
   router.push({
     name: 'new-timer-configuration',
     query: {
-      title: currentConfig.value.title,
-      hours: String(currentConfig.value.hours),
-      minutes: String(currentConfig.value.minutes),
-      seconds: String(currentConfig.value.seconds),
+      title: state.currentConfig.title,
+      hours: String(state.currentConfig.hours),
+      minutes: String(state.currentConfig.minutes),
+      seconds: String(state.currentConfig.seconds),
     },
   });
 }
 
-onMounted(async () => {
-  const id = Number(route.params.id);
-  const found = await store.initTimer(id);
-  if (!found) {
-    router.push('/');
+async function cancelTimer(id: number) {
+  try {
+    await window.electronAPI.cancelTimer(id);
+    store.disposeTimer(id);
+  } catch (err) {
+    console.error('Failed to cancel timer:', err);
   }
-});
+}
 
-// O Vue Router reutiliza o mesmo componente quando apenas o parâmetro :id muda,
-// então onMounted não é disparado novamente. Recarrega ao trocar de id.
-watch(
-  () => route.params.id,
-  async (newId) => {
-    const found = await store.initTimer(Number(newId));
-    if (!found) {
-      router.push('/');
-    }
-  }
-);
-
-onBeforeUnmount(() => {
-  store.disposeTimer();
+onMounted(() => {
+  loadConfigurations();
 });
 </script>
 
@@ -80,17 +108,57 @@ onBeforeUnmount(() => {
     class="d-flex align-center justify-center"
     style="min-height: 100vh; background: #f0f2f5"
   >
-    <v-card max-width="360" width="100%" class="pa-6" elevation="4">
-      <v-card-title class="text-h5 text-center mb-2">{{ title || 'Cronômetro' }}</v-card-title>
+    <v-card max-width="500" width="100%" class="pa-4" elevation="4">
+      <v-card-title class="text-h5 text-center mb-4">Timers Ativos</v-card-title>
 
-      <v-card-text class="text-center">
-        <div class="time-label text-h2 font-weight-light mb-2">{{ formattedTime }}</div>
-        <div class="text-caption text-medium-emphasis">Zera às {{ formattedFinishTime }}</div>
-      </v-card-text>
+      <v-btn color="success" block class="mb-4" @click="router.push('/new_timer_configuration')">
+        + Novo timer
+      </v-btn>
 
-      <v-btn color="primary" block class="mb-2" @click="openConfigurePage"> Configurar </v-btn>
+      <v-alert v-if="configurationsError" type="error" variant="tonal" class="mb-4">{{
+        configurationsError
+      }}</v-alert>
 
-      <v-btn color="secondary" block @click="restart"> Reiniciar </v-btn>
+      <v-select
+        v-if="configurations.length > 0"
+        v-model="selectedConfigurationId"
+        :items="configurations"
+        item-title="title"
+        item-value="id"
+        label="Iniciar configuração existente"
+        outlined
+        class="mb-4"
+      />
+      <v-btn
+        v-if="configurations.length > 0"
+        color="primary"
+        block
+        class="mb-4"
+        :disabled="!selectedConfigurationId"
+        @click="startFromConfiguration"
+      >
+        Iniciar timer selecionado
+      </v-btn>
+
+      <v-list v-if="store.timers.size > 0">
+        <v-list-item v-for="state of store.timers.values()" :key="state.id" class="mb-2">
+          <template #default>
+            <TimerCard
+              :title="state.title"
+              :time="store.formattedTime(state.id)"
+              :finish-time="store.formattedFinishTime(state.id)"
+              :status="state.status"
+              :on-configure="() => openConfigurePage(state.id)"
+              :on-restart="() => restart(state.id)"
+              :on-cancel="() => cancelTimer(state.id)"
+            />
+          </template>
+        </v-list-item>
+      </v-list>
+
+      <v-alert v-else type="info" variant="tonal" class="mb-4 text-center">
+        Nenhum timer em execução
+      </v-alert>
     </v-card>
   </v-container>
 </template>

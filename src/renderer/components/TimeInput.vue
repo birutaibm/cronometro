@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useCounterStore } from '../stores/counter';
 
 const router = useRouter();
 const route = useRoute();
+const store = useCounterStore();
 const hours = ref(0);
 const minutes = ref(25);
 const seconds = ref(0);
@@ -43,7 +45,8 @@ async function startCountdown() {
       minutes: minutes.value,
       seconds: seconds.value,
     });
-    router.push(`/timer/${id}`);
+    await store.initTimer(id);
+    router.push('/timer');
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';
     console.error('Failed to start timer:', err);

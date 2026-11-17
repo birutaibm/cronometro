@@ -29,13 +29,14 @@ cronometro/
 │   │   ├── env.d.ts                 # Declarações de tipo do Vite
 │   │   ├── electron-api.d.ts        # Tipagem da API Electron exposta ao renderer
 │   │   ├── components/              # Componentes Vue
+│   │   │   ├── TimerCard.vue        # Card individual de timer (reutilizado na lista de timers ativos)
 │   │   │   ├── TimerConfigurationsList.vue  # Página de listagem de configurações (rota /)
-│   │   │   ├── TimerPage.vue        # Página do cronômetro — exibe o tempo e os botões de controle
+│   │   │   ├── TimerPage.vue        # Página de timers ativos — exibe lista de cards de timers (rota /timer)
 │   │   │   └── TimeInput.vue        # Página de criação — define título, horas, minutos e segundos
 │   │   ├── router/                  # Configuração de rotas
-│   │   │   └── index.ts             # Definição das rotas (/，/new_timer_configuration, /timer/:id)
+│   │   │   └── index.ts             # Definição das rotas (/，/new_timer_configuration, /timer)
 │   │   └── stores/                  # Pinia stores
-│   │       └── counter.ts           # Store de estado do cronômetro (tempo, execução, título)
+│   │       └── counter.ts           # Store de estado do cronômetro (gera/gerencia múltiplos timers simultâneos via mapa)
 │   └── electron/                    # Processo principal do Electron
 │       ├── main.ts                  # Entry point — cria janelas e gerencia a lógica do timer
 │       ├── preload.ts               # Pré-load — expõe a API do Electron ao renderer via contextBridge
@@ -81,11 +82,14 @@ cronometro/
 ### Fluxo da Aplicação
 
 1. O usuário acessa a rota `/` e vê a listagem de `timer_configurations` já salvas no componente `TimerConfigurationsList.vue`. Cada item exibe o título, o tempo no formato HH:MM:SS e um botão "Iniciar".
-2. Clicar em "Iniciar" cria uma `timer_execution` com status `RUNNING` baseada naquela configuração e navega para `/timer/:executionId`, onde `TimerPage.vue` exibe o tempo restante.
-3. O botão "+ Nova configuração" navega para `/new_timer_configuration`, onde `TimeInput.vue` permite definir título, horas, minutos e segundos. Ao clicar em "Iniciar", chama um único canal do main (`timer:create-and-start`) que grava a configuração, inicia o timer e cria a execução, retornando o id para navegação.
-4. O processo principal (`src/electron/main.ts`) recebe os comandos via `ipcMain.handle`, instancia a classe `Timer` para gerenciar a contagem regressiva e persiste configuração/execução no banco de dados SQLite via `DatabaseRepository`.
-5. O pré-load (`src/electron/preload.ts`) expõe a API `window.electronAPI` ao renderer via `contextBridge`, com métodos `startTimer`, `createAndStartTimer`, `getConfigurations`, `getTimer`, `cancelTimer`, `restartTimer`, `hideMainWindow`, `getSessions`, `sendAction`, `onTick`, `onFinished`.
-6. Quando o timer termina, o processo principal envia `timer:finished`, marca a execução como `FINISHED` e abre uma janela de alerta com opções de ação.
+2. Clicar em "Iniciar" cria uma `timer_execution` com status `RUNNING` baseada naquela configuração e navega para `/timer`, onde `TimerPage.vue` exibe a lista de timers ativos. Múltiplos timers podem rodar simultâneos, cada um em um card independente.
+3. O botão "+ Nova configuração" navega para `/new_timer_configuration`, onde `TimeInput.vue` permite definir título, horas, minutos e segundos. Ao clicar em "Iniciar", chama um único canal do main (`timer:create-and-start`) que grava a configuração, inicia o timer e cria a execução, retornando o id para navegação. Também navega para `/timer`.
+4. O processo principal (`src/electron/main.ts`) recebe os comandos via `ipcMain.handle`, instancia a classe `Timer` para gerenciar cada contagem regressiva de forma independente (uma instância por execução, gerenciada em um `Map` keyada pelo `executionId`) e persiste configuração/execução no banco de dados SQLite via `DatabaseRepository`.
+5. O pré-load (`src/electron/preload.ts`) expõe a API `window.electronAPI` ao renderer via `contextBridge`, com métodos `startTimer`, `createAndStartTimer`, `getConfigurations`, `getTimer`, `cancelTimer`, `restartTimer`, `hideMainWindow`, `getSessions`, `sendAction`, `onTick`, `onFinished`. Os canais `timer:tick` e `timer:finished` enviam o `id` da execução para identificar qual timer está sendo atualizado ou finalizado.
+6. Quando o timer termina, o processo principal envia `timer:finished` contendo o `id` da execução, marca a execução como `FINISHED` e abre uma janela de alerta com opções de ação que variam conforme o contexto:
+   - Janela principal visível: `['ok']`
+   - Janela principal fechada com outros timers ativos: `['ok', 'reabrir']`
+   - Janela principal fechada sem timers ativos: `['reabrir', 'finalizar']`
 7. O `src/electron/alert-preload.ts` expõe `sendAction` para comunicação da janela de alerta de volta ao processo principal.
 
 ### Persistência de Dados
@@ -113,9 +117,11 @@ O banco utiliza modo WAL (`PRAGMA journal_mode = WAL`) para melhor concorrência
 A lógica do cronômetro no processo principal foi encapsulada na classe `Timer` (`src/electron/timer.ts`), que gerencia:
 
 - Início/cancelamento da contagem regressiva
-- Emissão de eventos `timer:tick` (segundo a segundo) e `timer:finished`
+- Emissão de eventos `timer:tick` (segundo a segundo) e `timer:finished` contendo o `id` da execução
 - Cálculo preciso de tempo restante baseado em `Date.now()`
 - Interface `System` para desacoplar da API do Electron (facilita testes)
+
+O processo principal (`main.ts`) gerencia múltiplas instâncias independentes de `Timer` (uma por execução, armazenada em um `Map` keyada pelo `executionId`), permitindo a execução de vários timers simultâneos.
 
 ### IPC (Comunicação Inter-Processos)
 
@@ -128,8 +134,8 @@ A lógica do cronômetro no processo principal foi encapsulada na classe `Timer`
 | Renderer → Main | `timer:restart`          | Reinicia uma execução existente e retorna o novo id (invoke) |
 | Renderer → Main | `timer:get-configurations`| Lista as configurações de timer (invoke)          |
 | Renderer → Main | `timer:get-sessions`     | Obtém histórico de execuções (invoke)             |
-| Main → Renderer | `timer:tick`             | Envia segundos restantes (send)                   |
-| Main → Renderer | `timer:finished`         | Notifica que o timer acabou (send)                |
+| Main → Renderer | `timer:tick`             | Envia `{ id, remainingSeconds }` para identificar qual timer está sendo atualizado (send)                   |
+| Main → Renderer | `timer:finished`         | Notifica que o timer acabou, enviando `{ id }` da execução finalizada (send)                |
 | Renderer → Main | `main:hide`              | Esconde a janela principal (send)                 |
 | Renderer → Main | `alert:action`           | Ação da janela de alerta (ok, reabrir, finalizar) (send) |
 

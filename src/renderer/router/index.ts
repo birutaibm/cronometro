@@ -10,7 +10,7 @@ const routes = [
     component: TimeInput,
     name: 'new-timer-configuration',
   },
-  { path: '/timer/:id', component: TimerPage, name: 'timer' },
+  { path: '/timer', component: TimerPage, name: 'timer' },
 ];
 
 export const BASE_URL = '/';
