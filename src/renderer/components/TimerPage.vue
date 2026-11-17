@@ -25,7 +25,8 @@ async function loadConfigurations() {
   try {
     configurations.value = await window.electronAPI.getConfigurations();
   } catch (err) {
-    configurationsError.value = err instanceof Error ? err.message : 'Erro ao carregar configurações';
+    configurationsError.value =
+      err instanceof Error ? err.message : 'Erro ao carregar configurações';
     console.error('Failed to load configurations:', err);
   } finally {
     loadingConfigurations.value = false;
@@ -114,7 +115,9 @@ onMounted(() => {
         + Novo timer
       </v-btn>
 
-      <v-alert v-if="configurationsError" type="error" variant="tonal" class="mb-4">{{ configurationsError }}</v-alert>
+      <v-alert v-if="configurationsError" type="error" variant="tonal" class="mb-4">{{
+        configurationsError
+      }}</v-alert>
 
       <v-select
         v-if="configurations.length > 0"
