@@ -50,20 +50,38 @@ test.describe('Electron Timer Process Lifecycle', () => {
   });
 
   test('process stays alive when timer is running (window open)', async () => {
-    await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
+    const { id } = await page.evaluate(async (seconds: number) => {
+      const result = await (window as any).electronAPI.createAndStartTimer({
+        title: 'Test',
+        hours: 0,
+        minutes: 0,
+        seconds,
+      });
+      return result;
     }, 10);
     await sleep(500);
 
     const pid = electronApp.process().pid;
     expect(isProcessAlive(pid)).toBe(true);
 
+    // Cancela a execução para permitir o encerramento limpo da janela: com o
+    // timer em execução, o handler de close esconde a janela em vez de fechá-la.
+    await page.evaluate(async (timerId: number) => {
+      await (window as any).electronAPI.cancelTimer(timerId);
+    }, id);
+
     await electronApp.close();
   });
 
   test('process stays alive when main window is closed while timer is running', async () => {
-    await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
+    const { id } = await page.evaluate(async (seconds: number) => {
+      const result = await (window as any).electronAPI.createAndStartTimer({
+        title: 'Test',
+        hours: 0,
+        minutes: 0,
+        seconds,
+      });
+      return result;
     }, 10);
     await sleep(500);
 
@@ -77,6 +95,11 @@ test.describe('Electron Timer Process Lifecycle', () => {
 
     expect(isProcessAlive(pid)).toBe(true);
 
+    // Cancela a execução para permitir o encerramento limpo do app.
+    await page.evaluate(async (timerId: number) => {
+      await (window as any).electronAPI.cancelTimer(timerId);
+    }, id);
+
     await electronApp.close();
   });
 
@@ -84,16 +107,27 @@ test.describe('Electron Timer Process Lifecycle', () => {
     const pid = electronApp.process().pid;
     expect(isProcessAlive(pid)).toBe(true);
 
+    // Navega para a página de criação de timer via UI
     await page.evaluate(() => {
-      (window as any).__router?.push('/timer/2');
+      (window as any).__router?.push('/new_timer_configuration');
     });
     await sleep(500);
 
-    await page.evaluate((seconds: number) => {
-      (window as any).electronAPI.startTimer(0, 0, seconds, 'Test');
-    }, 2);
+    // Preenche o formulário e inicia um timer de 5 segundos
+    await page.getByLabel('Minutos').fill('0');
+    await page.getByLabel('Segundos').fill('5');
+    await page.getByRole('button', { name: 'Iniciar' }).click();
+    await sleep(500);
 
-    await expect(page.locator('.time-label')).toHaveText('00:00:00', { timeout: 8000 });
+    // Deve navegar para /timer e mostrar o card do timer
+    await expect(page).toHaveURL(/timer/);
+
+    // Espera o timer de 5 segundos chegar a zero
+    await sleep(6000);
+
+    await expect(page.locator('.time-label')).toHaveText('00:00:00', {
+      timeout: 8000,
+    });
     await sleep(500);
 
     const windows = electronApp.windows();
@@ -107,6 +141,69 @@ test.describe('Electron Timer Process Lifecycle', () => {
     }
 
     await sleep(1000);
+    await electronApp.close();
+  });
+
+  test('dois timers simultâneos aparecem em /timer e contam independentemente', async () => {
+    const pid = electronApp.process().pid;
+    expect(isProcessAlive(pid)).toBe(true);
+
+    // Inicia o primeiro timer (Timer A, 6 segundos)
+    await page.evaluate(() => {
+      (window as any).__router?.push('/new_timer_configuration');
+    });
+    await sleep(300);
+    await page.getByLabel('Título').fill('Timer A');
+    await page.getByLabel('Minutos').fill('0');
+    await page.getByLabel('Segundos').fill('6');
+    await page.getByRole('button', { name: 'Iniciar' }).click();
+    await sleep(300);
+    await expect(page).toHaveURL(/timer/);
+
+    // Inicia o segundo timer (Timer B, 2 segundos)
+    await page.getByRole('button', { name: '+ Novo timer' }).click();
+    await sleep(300);
+    await page.getByLabel('Título').fill('Timer B');
+    await page.getByLabel('Minutos').fill('0');
+    await page.getByLabel('Segundos').fill('2');
+    await page.getByRole('button', { name: 'Iniciar' }).click();
+    await sleep(300);
+    await expect(page).toHaveURL(/timer/);
+
+    // Ambos os cards devem estar visíveis na página /timer
+    await expect(page.getByText('Timer A')).toBeVisible();
+    await expect(page.getByText('Timer B')).toBeVisible();
+
+    // Timer B (2s) deve zerar antes do Timer A (6s).
+    // Os cards são renderizados por ordem de inserção no Map: A (índice 0), B (índice 1).
+    await sleep(2500);
+
+    const timeLabels = page.locator('.time-label');
+    await expect(timeLabels).toHaveCount(2);
+    await expect(timeLabels.nth(1)).toHaveText('00:00:00', {
+      timeout: 8000,
+    });
+
+    // Timer A ainda deve estar rodando (tempo > 0)
+    await expect(timeLabels.nth(0)).not.toHaveText('00:00:00');
+
+    // Aguarda Timer A zerar também
+    await sleep(2000);
+    await expect(timeLabels.nth(0)).toHaveText('00:00:00', {
+      timeout: 8000,
+    });
+
+    // Fecha quaisquer janelas de alerta deixadas pelos timers finalizados
+    const windows = electronApp.windows();
+    const alertWindow = windows.find((w: any) => w !== page);
+    if (alertWindow) {
+      await alertWindow.evaluate(() => {
+        const btn = document.querySelector('.btn-ok') as HTMLElement;
+        if (btn) btn.click();
+      });
+      await sleep(500);
+    }
+
     await electronApp.close();
   });
 

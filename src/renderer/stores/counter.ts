@@ -1,70 +1,119 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, reactive } from 'vue';
+
+interface TimerState {
+  id: number;
+  title: string;
+  remainingSeconds: number;
+  finishTime: number;
+  status: 'RUNNING' | 'FINISHED' | 'CANCELLED';
+  currentConfig: {
+    title: string;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null;
+}
 
 export const useCounterStore = defineStore('counter', () => {
-  const remainingSeconds = ref(0);
-  const isRunning = ref(false);
-  const totalSeconds = ref(0);
-  const title = ref('');
-  const finishTime = ref(0);
+  const timers = ref<Map<number, TimerState>>(new Map());
 
-  const formattedTime = computed(() => {
-    const hrs = Math.floor(remainingSeconds.value / 3600);
-    const mins = Math.floor((remainingSeconds.value % 3600) / 60);
-    const secs = remainingSeconds.value % 60;
-    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  });
+  let cleanupTick: (() => void) | null = null;
+  let cleanupFinished: (() => void) | null = null;
 
-  const formattedFinishTime = computed(() => {
-    if (!finishTime.value) return '';
-    return new Date(finishTime.value).toLocaleTimeString('pt-BR', {
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  function formattedTime(id: number): string {
+    const state = timers.value.get(id);
+    if (!state) return '00:00:00';
+    const hrs = Math.floor(state.remainingSeconds / 3600);
+    const mins = Math.floor((state.remainingSeconds % 3600) / 60);
+    const secs = state.remainingSeconds % 60;
+    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+  }
+
+  function formattedFinishTime(id: number): string {
+    const state = timers.value.get(id);
+    if (!state || !state.finishTime) return '';
+    return new Date(state.finishTime).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
     });
-  });
-
-  function setTime(seconds: number) {
-    totalSeconds.value = seconds;
-    remainingSeconds.value = seconds;
-    isRunning.value = false;
   }
 
-  function setTitle(value: string) {
-    title.value = value;
+  function getTimerState(id: number): TimerState | undefined {
+    return timers.value.get(id);
   }
 
-  function setRunning(value: boolean) {
-    isRunning.value = value;
+  function ensureListeners() {
+    if (cleanupTick) return;
+
+    cleanupTick = window.electronAPI.onTick((id, remaining) => {
+      const state = timers.value.get(id);
+      if (state) state.remainingSeconds = remaining;
+    });
+
+    cleanupFinished = window.electronAPI.onFinished((id) => {
+      const state = timers.value.get(id);
+      if (!state) return;
+      state.remainingSeconds = 0;
+      state.status = 'FINISHED';
+    });
   }
 
-  function setFinishTime(value: number) {
-    finishTime.value = value;
+  function removeListeners() {
+    if (cleanupTick) {
+      cleanupTick();
+      cleanupTick = null;
+    }
+    if (cleanupFinished) {
+      cleanupFinished();
+      cleanupFinished = null;
+    }
   }
 
-  function reset() {
-    remainingSeconds.value = totalSeconds.value;
-    isRunning.value = false;
+  async function initTimer(id: number): Promise<boolean> {
+    const timer = await window.electronAPI.getTimer(id);
+    if (!timer) {
+      return false;
+    }
+
+    const totalSeconds = timer.hours * 3600 + timer.minutes * 60 + timer.seconds;
+    timers.value.set(
+      id,
+      reactive({
+        id,
+        title: timer.title,
+        remainingSeconds: totalSeconds,
+        finishTime: new Date(timer.finish_at.replace(' ', 'T') + 'Z').getTime(),
+        status: 'RUNNING',
+        currentConfig: {
+          title: timer.title,
+          hours: timer.hours,
+          minutes: timer.minutes,
+          seconds: timer.seconds,
+        },
+      })
+    );
+
+    ensureListeners();
+    return true;
   }
 
-  function finish() {
-    remainingSeconds.value = 0;
-    isRunning.value = false;
+  function disposeTimer(id: number) {
+    timers.value.delete(id);
+    if (timers.value.size === 0) {
+      removeListeners();
+    }
   }
 
   return {
-    remainingSeconds,
-    isRunning,
-    totalSeconds,
-    title,
-    finishTime,
+    timers,
     formattedTime,
     formattedFinishTime,
-    setTime,
-    setTitle,
-    setRunning,
-    reset,
-    setFinishTime,
-    finish,
+    getTimerState,
+    initTimer,
+    disposeTimer,
   };
 });
