@@ -13,5 +13,5 @@
     },
     "types": ["vite", "vite/client", "jest", "node"]
   },
-  "include": ["src/renderer/**/*", "src/electron/**/*", "tests/**/*"]
+  "include": ["src/renderer/**/*", "src/electron/**/*", "src/types/**/*", "tests/**/*"]
 }
