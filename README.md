@@ -15,80 +15,129 @@ Quando o timer termina, uma janela de alerta é exibida com opções de ação (
 - **Vite** — Empacotador e servidor de desenvolvimento
 - **Electron** — Framework para construção de aplicativos desktop multiplataforma
 - **Pinia** — Gerenciamento de estado
+- **better-sqlite3** — Driver SQLite de alta performance
+- **Knex.js** — Query builder e migrações de banco de dados
 
 ## Arquitetura e Organização dos Arquivos
 
 ```
 cronometro/
-├── electron/                          # Processo principal do Electron
-│   ├── main.ts                        # Entry point — cria janelas e gerencia a lógica do timer
-│   ├── preload.ts                     # Pré-load — expõe a API do Electron ao renderer via contextBridge
-│   └── alert-preload.ts               # Pré-load para a janela de alerta
-├── src/                               # Código-fonte do frontend Vue
-│   ├── main.ts                        # Inicialização do app Vue (Pinia, Router, Vuetify, montagem)
-│   ├── App.vue                        # Componente raiz
-│   ├── env.d.ts                       # Declarações de tipo do Vite
-│   ├── electron-api.d.ts              # Tipagem da API Electron exposta ao renderer
-│   ├── components/                    # Componentes Vue
-│   │   ├── TimerPage.vue              # Página do cronômetro — exibe o tempo e os botões de controle
-│   │   └── TimeInput.vue              # Página de entrada — permite definir horas, minutos, segundos e título
-│   ├── router/                        # Configuração de rotas
-│   │   └── index.ts                   # Definição das rotas (/* e /timer/:seconds)
-│   └── stores/                        # Pinia stores
-│       └── counter.ts                 # Store de estado do cronômetro (tempo, execução, título)
-├── tests/                             # Testes
-│   ├── unit/                          # Testes unitários (Jest)
-│   │   ├── __mocks__/                 # Mocks para testes
-│   │   ├── alert-preload.test.ts      # Testes do pré-load de alerta
-│   │   ├── counter.test.ts            # Testes da store counter
-│   │   ├── helpers.ts                 # Utilidades para testes
-│   │   ├── main.test.ts               # Testes do processo principal
-│   │   ├── preload.test.ts            # Testes do pré-load
-│   │   ├── router.test.ts             # Testes de rotas
-│   │   └── timer.test.ts              # Testes da lógica do timer
-│   └── integration/                   # Testes de integração/E2E (Playwright)
-│       └── e2e.test.ts                # Testes end-to-end
-├── scripts/                           # Scripts auxiliares
-│   ├── afterPack.js                   # Wrapper para AppImage (no-sandbox, disable-dev-shm)
-│   ├── remove-crossorigin.js          # Remove crossorigin do index.html build
-│   └── start-electron.cjs            # Script para iniciar Vite + Electron simultaneamente no modo dev
-├── public/                            # Assets estáticos
-├── dist/                              # Saída do build do Vite e apps empacotados (gerado pelo electron-builder)
-├── dist-electron/                     # Saída do build do processo principal do Electron (gerado)
-├── index.html                         # HTML base do app
-├── package.json                       # Dependências e scripts
-├── tsconfig.json                      # Configuração do TypeScript (frontend)
-├── tsconfig.main.json                 # Configuração do TypeScript (processo principal)
-├── tsconfig.preload.json              # Configuração do TypeScript (pré-load)
-├── jest.config.js                     # Configuração do Jest
-├── playwright.config.ts               # Configuração do Playwright
-├── eslint.config.js                   # Configuração do ESLint
-├── .prettierrc                        # Prettier config
-├── .prettierignore                    # Prettier ignore
-├── .gitignore                         # Git ignore
-├── vite.config.mjs                    # Configuração do Vite
+├── src/
+│   ├── renderer/                    # Código-fonte do frontend Vue
+│   │   ├── main.ts                  # Inicialização do app Vue (Pinia, Router, Vuetify, montagem)
+│   │   ├── App.vue                  # Componente raiz
+│   │   ├── env.d.ts                 # Declarações de tipo do Vite
+│   │   ├── electron-api.d.ts        # Tipagem da API Electron exposta ao renderer
+│   │   ├── components/              # Componentes Vue
+│   │   │   ├── TimerCard.vue        # Card individual de timer (reutilizado na lista de timers ativos)
+│   │   │   ├── TimerConfigurationsList.vue  # Página de listagem de configurações (rota /)
+│   │   │   ├── TimerPage.vue        # Página de timers ativos — exibe lista de cards de timers (rota /timer)
+│   │   │   └── TimeInput.vue        # Página de criação — define título, horas, minutos e segundos
+│   │   ├── router/                  # Configuração de rotas
+│   │   │   └── index.ts             # Definição das rotas (/，/new_timer_configuration, /timer)
+│   │   └── stores/                  # Pinia stores
+│   │       └── counter.ts           # Store de estado do cronômetro (gera/gerencia múltiplos timers simultâneos via mapa)
+│   └── electron/                    # Processo principal do Electron
+│       ├── main.ts                  # Entry point — cria janelas e gerencia a lógica do timer
+│       ├── preload.ts               # Pré-load — expõe a API do Electron ao renderer via contextBridge
+│       └── alert-preload.ts         # Pré-load para a janela de alerta
+│       └── database/                # Camada de acesso a dados
+│           ├── index.ts             # Inicialização do banco, getRepository e getFileSystem
+│           ├── database-repository.ts  # Classe DatabaseRepository (createConfiguration, createExecution, getExecutionById, ...)
+│           ├── file-system.ts       # Classe FileSystem (manipulação de diretórios e backup)
+│           └── migrations/          # Scripts de migração do banco de dados (001_create_timers_table, 002_split_timers_table)
+├── tests/                           # Testes
+│   ├── unit/                        # Testes unitários (Jest)
+│   │   ├── __mocks__/               # Mocks para testes
+│   │   ├── alert-preload.test.ts    # Testes do pré-load de alerta
+│   │   ├── counter.test.ts          # Testes da store counter
+│   │   ├── helpers.ts               # Utilidades para testes
+│   │   ├── main.test.ts             # Testes do processo principal
+│   │   ├── preload.test.ts          # Testes do pré-load
+│   │   ├── router.test.ts           # Testes de rotas
+│   │   └── timer.test.ts            # Testes da lógica do timer
+│   └── integration/                 # Testes de integração/E2E (Playwright)
+│       └── e2e.test.ts              # Testes end-to-end
+├── scripts/                         # Scripts auxiliares
+│   ├── afterPack.js                 # Wrapper para AppImage (no-sandbox, disable-dev-shm)
+│   ├── remove-crossorigin.js        # Remove crossorigin do index.html build
+│   └── start-electron.cjs          # Script para iniciar Vite + Electron simultaneamente no modo dev
+├── public/                          # Assets estáticos
+├── dist/                            # Saída do build do Vite e apps empacotados (gerado pelo electron-builder)
+├── dist-electron/                   # Saída do build do processo principal do Electron (gerado)
+├── index.html                       # HTML base do app
+├── package.json                     # Dependências e scripts
+├── tsconfig.json                    # Configuração do TypeScript (frontend)
+├── tsconfig.main.json               # Configuração do TypeScript (processo principal)
+├── tsconfig.preload.json            # Configuração do TypeScript (pré-load)
+├── jest.config.js                   # Configuração do Jest
+├── playwright.config.ts             # Configuração do Playwright
+├── eslint.config.js                 # Configuração do ESLint
+├── .prettierrc                      # Prettier config
+├── .prettierignore                  # Prettier ignore
+├── .gitignore                       # Git ignore
+└── vite.config.mjs                  # Configuração do Vite
 ```
 
 ### Fluxo da Aplicação
 
-1. O usuário acessa a rota `/` e insere horas, minutos, segundos e um título opcional no componente `TimeInput.vue`.
-2. Ao clicar em "Iniciar", o tempo é convertido para segundos e armazenado na Pinia store `counter`.
-3. O app navega para a rota `/timer`, onde `TimerPage.vue` conecta-se aos métodos IPC via `window.electronAPI`.
-4. O processo principal (`electron/main.ts`) recebe o comando `timer:start` via `ipcMain.handle` e inicia um `setInterval` de 1 segundo.
-5. O pré-load (`electron/preload.ts`) expõe a API `window.electronAPI` ao renderer via `contextBridge`, com métodos `startTimer`, `cancelTimer`, `hideMainWindow`, `onTick`, `onFinished` e `sendAction`.
-6. Quando o timer termina, o processo principal envia `timer:finished` e abre uma janela de alerta com opções de ação.
-7. O `electron/alert-preload.ts` expõe `sendAction` para comunicação da janela de alerta de volta ao processo principal.
+1. O usuário acessa a rota `/` e vê a listagem de `timer_configurations` já salvas no componente `TimerConfigurationsList.vue`. Cada item exibe o título, o tempo no formato HH:MM:SS e um botão "Iniciar".
+2. Clicar em "Iniciar" cria uma `timer_execution` com status `RUNNING` baseada naquela configuração e navega para `/timer`, onde `TimerPage.vue` exibe a lista de timers ativos. Múltiplos timers podem rodar simultâneos, cada um em um card independente.
+3. O botão "+ Nova configuração" navega para `/new_timer_configuration`, onde `TimeInput.vue` permite definir título, horas, minutos e segundos. Ao clicar em "Iniciar", chama um único canal do main (`timer:create-and-start`) que grava a configuração, inicia o timer e cria a execução, retornando o id para navegação. Também navega para `/timer`.
+4. O processo principal (`src/electron/main.ts`) recebe os comandos via `ipcMain.handle`, instancia a classe `Timer` para gerenciar cada contagem regressiva de forma independente (uma instância por execução, gerenciada em um `Map` keyada pelo `executionId`) e persiste configuração/execução no banco de dados SQLite via `DatabaseRepository`.
+5. O pré-load (`src/electron/preload.ts`) expõe a API `window.electronAPI` ao renderer via `contextBridge`, com métodos `startTimer`, `createAndStartTimer`, `getConfigurations`, `getTimer`, `cancelTimer`, `restartTimer`, `hideMainWindow`, `getSessions`, `sendAction`, `onTick`, `onFinished`. Os canais `timer:tick` e `timer:finished` enviam o `id` da execução para identificar qual timer está sendo atualizado ou finalizado.
+6. Quando o timer termina, o processo principal envia `timer:finished` contendo o `id` da execução, marca a execução como `FINISHED` e abre uma janela de alerta com opções de ação que variam conforme o contexto:
+   - Janela principal visível: `['ok']`
+   - Janela principal fechada com outros timers ativos: `['ok', 'reabrir']`
+   - Janela principal fechada sem timers ativos: `['reabrir', 'finalizar']`
+7. O `src/electron/alert-preload.ts` expõe `sendAction` para comunicação da janela de alerta de volta ao processo principal.
+
+### Persistência de Dados
+
+As configurações e execuções de timer são salvas em um banco de dados SQLite localizado em `<userData>/database/database.sqlite` (ex: `~/Library/Application Support/cronometro/database/database.sqlite` no macOS). O banco utiliza duas tabelas:
+
+**timer_configurations**
+- `id` (auto-incremento)
+- `title` (string)
+- `hours`, `minutes`, `seconds` (inteiros)
+- `created_at`, `updated_at` (timestamps UTC)
+
+**timer_executions**
+- `id` (auto-incremento)
+- `configuration_id` (FK para `timer_configurations.id`)
+- `finish_at` (timestamp UTC calculado no início)
+- `status` (RUNNING, FINISHED ou CANCELLED)
+- `cancelled_at` (timestamp UTC, preenchido ao cancelar)
+- `created_at`, `updated_at` (timestamps UTC)
+
+O banco utiliza modo WAL (`PRAGMA journal_mode = WAL`) para melhor concorrência. Antes de executar migrações pendentes, um backup automático é criado em `<userData>/database/backup/`. Logs de erro ficam em `<userData>/database/logs/`.
+
+### Timer Class
+
+A lógica do cronômetro no processo principal foi encapsulada na classe `Timer` (`src/electron/timer.ts`), que gerencia:
+
+- Início/cancelamento da contagem regressiva
+- Emissão de eventos `timer:tick` (segundo a segundo) e `timer:finished` contendo o `id` da execução
+- Cálculo preciso de tempo restante baseado em `Date.now()`
+- Interface `System` para desacoplar da API do Electron (facilita testes)
+
+O processo principal (`main.ts`) gerencia múltiplas instâncias independentes de `Timer` (uma por execução, armazenada em um `Map` keyada pelo `executionId`), permitindo a execução de vários timers simultâneos.
 
 ### IPC (Comunicação Inter-Processos)
 
-| Direção         | Canal            | Descrição                                         |
-| --------------- | ---------------- | ------------------------------------------------- |
-| Renderer → Main | `timer:start`    | Inicia o timer (invoke)                           |
-| Renderer → Main | `timer:cancel`   | Cancela o timer (invoke)                          |
-| Main → Renderer | `timer:tick`     | Envia segundos restantes                          |
-| Main → Renderer | `timer:finished` | Notifica que o timer acabou                       |
-| Renderer → Main | `main:hide`      | Esconde a janela principal (send)                 |
-| Renderer → Main | `alert:action`   | Ação da janela de alerta (ok, reabrir, finalizar) |
+| Direção         | Canal                    | Descrição                                         |
+| --------------- | ------------------------ | ------------------------------------------------- |
+| Renderer → Main | `timer:start`            | Inicia o timer a partir de uma `configurationId` e retorna o id da execução (invoke) |
+| Renderer → Main | `timer:create-and-start` | Cria a configuração, inicia o timer e cria a execução, retornando o id (invoke) |
+| Renderer → Main | `timer:cancel`           | Cancela a execução pelo id (invoke)               |
+| Renderer → Main | `timer:get-timer`        | Obtém os dados de uma execução (com configuração) pelo id (invoke) |
+| Renderer → Main | `timer:restart`          | Reinicia uma execução existente e retorna o novo id (invoke) |
+| Renderer → Main | `timer:get-configurations`| Lista as configurações de timer (invoke)          |
+| Renderer → Main | `timer:get-sessions`     | Obtém histórico de execuções (invoke)             |
+| Main → Renderer | `timer:tick`             | Envia `{ id, remainingSeconds }` para identificar qual timer está sendo atualizado (send)                   |
+| Main → Renderer | `timer:finished`         | Notifica que o timer acabou, enviando `{ id }` da execução finalizada (send)                |
+| Renderer → Main | `main:hide`              | Esconde a janela principal (send)                 |
+| Renderer → Main | `alert:action`           | Ação da janela de alerta (ok, reabrir, finalizar) (send) |
 
 ## Pré-requisitos
 
@@ -162,6 +211,7 @@ O aplicativo utiliza as seguintes configurações para compatibilidade com AppIm
 - **loadURL com `file://`** — O processo principal carrega o HTML via `loadURL` com protocolo `file://`, garantindo resolução correta de caminhos dentro do AppImage/ASAR.
 - **app.isPackaged / app.getAppPath()** — Resolução de caminhos adaptada para apps empacotados vs. modo desenvolvimento.
 - **remove-crossorigin.js** — Script de pós-build que remove o atributo `crossorigin` gerado pelo Vite do `index.html`, evitando falhas de carregamento de módulos em URLs `file://`.
+- **start-electron.cjs** — No modo de desenvolvimento, define a variável `ELECTRON_DISABLE_SANDBOX=1` ao iniciar o Electron. Isso é necessário em ambientes containerizados (Docker/CI) onde não há permissão de root para configurar o binário `chrome-sandbox` com modo SUID (4755), impedindo que o app seja abortado pelo sandbox do Chromium.
 
 ## Scripts Disponíveis
 
