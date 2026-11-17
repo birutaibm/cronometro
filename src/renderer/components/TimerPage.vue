@@ -1,10 +1,51 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useCounterStore } from '../stores/counter';
 import TimerCard from './TimerCard.vue';
 
 const router = useRouter();
 const store = useCounterStore();
+
+interface TimerConfiguration {
+  id: number;
+  title: string;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+const configurations = ref<TimerConfiguration[]>([]);
+const selectedConfigurationId = ref<number | null>(null);
+const configurationsError = ref<string | null>(null);
+const loadingConfigurations = ref(false);
+
+async function loadConfigurations() {
+  loadingConfigurations.value = true;
+  try {
+    configurations.value = await window.electronAPI.getConfigurations();
+  } catch (err) {
+    configurationsError.value = err instanceof Error ? err.message : 'Erro ao carregar configurações';
+    console.error('Failed to load configurations:', err);
+  } finally {
+    loadingConfigurations.value = false;
+  }
+}
+
+async function startFromConfiguration() {
+  const configurationId = selectedConfigurationId.value;
+  if (!configurationId) return;
+
+  try {
+    const { id } = await window.electronAPI.startTimer(configurationId);
+    await store.initTimer(id);
+    selectedConfigurationId.value = null;
+    configurationsError.value = null;
+  } catch (err) {
+    configurationsError.value = err instanceof Error ? err.message : 'Erro ao iniciar o timer';
+    console.error('Failed to start timer from configuration:', err);
+  }
+}
 
 function restart(id: number) {
   const state = store.getTimerState(id);
@@ -54,6 +95,10 @@ async function cancelTimer(id: number) {
     console.error('Failed to cancel timer:', err);
   }
 }
+
+onMounted(() => {
+  loadConfigurations();
+});
 </script>
 
 <template>
@@ -67,6 +112,29 @@ async function cancelTimer(id: number) {
 
       <v-btn color="success" block class="mb-4" @click="router.push('/new_timer_configuration')">
         + Novo timer
+      </v-btn>
+
+      <v-alert v-if="configurationsError" type="error" variant="tonal" class="mb-4">{{ configurationsError }}</v-alert>
+
+      <v-select
+        v-if="configurations.length > 0"
+        v-model="selectedConfigurationId"
+        :items="configurations"
+        item-title="title"
+        item-value="id"
+        label="Iniciar configuração existente"
+        outlined
+        class="mb-4"
+      />
+      <v-btn
+        v-if="configurations.length > 0"
+        color="primary"
+        block
+        class="mb-4"
+        :disabled="!selectedConfigurationId"
+        @click="startFromConfiguration"
+      >
+        Iniciar timer selecionado
       </v-btn>
 
       <v-list v-if="store.timers.size > 0">
